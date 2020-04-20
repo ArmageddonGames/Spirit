@@ -1,6 +1,6 @@
 SPIRIT WEAPON FOR ZELDA QUEST AETERNAL
 READ ME
-Wah ha ha! You found me! ~ Random Korok
+
 =================== HEADER INFORMATION ===================
 NAME: Spirit Weapon
 AUTHOR: Orithan Fox
