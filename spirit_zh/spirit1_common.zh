@@ -1,381 +1,425 @@
-int Spirit_Global[5]; //Global array for handling global switches
+namespace Spirit
+{
+	untyped Global[GLOBAL_SZ]; //Global array for handling global switches
+	enum GlobalIndex
+	{
+		GLOBAL_SUSPEND, //The index for wherever the header is suspended or not. While suspended, Spirit_Waitframe does not return; keeping the weapons motionless. Global[GLOBAL_SUSPEND] <= 0, not suspended. Global[GLOBAL_SUSPEND] > 0, suspended.
+		GLOBAL_SZ
+	};
 
-const int SPIRITLW_GLOBAL_SUSPEND = 0; //The index for wherever the header is suspended or not. While suspended, Spirit_Waitframe does not return; keeping the weapons motionless. Spirit_Global[SPIRITLW_GLOBAL_SUSPEND] <= 0, not suspended. Spirit_Global[SPIRITLW_GLOBAL_SUSPEND] > 0, suspended.
-
-const int __SPIRITLW_HITWEAPON_DUR = 1; //How long hitting LWeapons persist.
-
-
-//LWeapon flags
-//None of these except LWF_PIERCING and LWF_ALIVE are functional
-const int LWF_NOFALL = 1; //Weapon does not fall.
-const int LWF_OBEYSOLID = 2; //Weapon respects combo solidity. The status of this flag is overridden by LWM_WALLBOUNCE. This however, does not stop it from getting blocked by combos which block it.
-const int LWF_OBEYGRAVITY = 4; //The weapon obeys gravity. This will be depreciated if ZC adds support for being able to set wherever the weapon internally obeys gravity or not
-const int LWF_PIERCING = 8; //Weapon does not die or vanish after hitting an enemy
-const int LWF_UNBLOCKABLE = 16; //Weapon can not be blocked by shields.
-const int LWF_DUMMY = 256; //Weapon does not move or hit enemies and can be controlled for other purposes.
-//Flags which are set internally, but the user can read/write freely if they want to
-const int LWF_ALIVE = 65536; //Weapon is alive. This is set internally
-
-//Internal LWeapon flags. These may change or be removed with no warning.
-const int __LWFI_ISSPIRIT = 1; //Denotes that this is controlled by spirit.zh. Use a specialized function to unset this flag in the case you want to end scripted control.
-const int __LWFI_AIRBORNE = 2; //Weapon has been airborne (SpiritLW_Z >= 8 or SpiritLW_Jump >= 2) at least once
-const int __LWFI_COLLISION = 4; //Weapon with had collision turned on and had been paused.
+	DEFINE SPIRITLW_HITWEAPON_DUR = 1; //How long hitting LWeapons persist.
 
 
-//Creates a basic spirited LWeapon with all the basic attributes and returns the pointer.
-lweapon Spirit_CreateWeapon(int type, int wscrpt, int weaponD, int parent, int x, int y, int damage, int step, int angle, int sprite, int sfx, int flags){
-	lweapon spirit = RunLWeaponScript(type, wscrpt, weaponD);
-	if(spirit->isValid()){
-		spirit->X = x;
-		spirit->Y = y;
-		spirit->Damage = damage;
-		spirit->Step = step;
-		spirit->Angular = true;
-		spirit->Angle = angle;
-		spirit->UseSprite(sprite);
-		spirit->Parent = parent;
-		spirit->Misc[SW_LWMISC_FLAGS] = (flags | LWF_ALIVE);
-		spirit->Misc[SW_LWMISC_FLAGS_INT] = __LWFI_ISSPIRIT;
-		spirit->CollDetection = false;
-		return spirit;
-	}
-	else{ //This probably shouldn't happen, but for good measure...
-		return Debug->NULL();
-	}
-}
-
-//Creates an LWeapon and assigns it a script and script args.
-//Created by Venrob, edited by Zoria RPG.
-lweapon RunLWeaponScript(int ID, int scriptNum, untyped args){
-    // Invalid script
-    if(scriptNum < 0 || scriptNum > 511) // Why allow script 0 here?
-        return Debug->NULL();
-    
-    lweapon n = Screen->CreateLWeapon(ID);
-    n->Script = scriptNum;
-    int sz = SizeOfArray(args);
-    if(sz){
-        sz = ( sz > 7 ) ? 7 : sz-1;
-        for (; sz >= 0; --sz)
-            n->InitD[sz] = args[sz];
-    }
-    return n;
-}
-
-//Supply a float array of size 3 or higher to use. Otherwise it does nothing.
-//Args:
-//	acc - Step Speed at which the weapon accelerates in. 100 = 1 pixel per frame (you probably don't want it this high unless you know what you are doing)
-//	angle - Angle, in degrees, at which weapon accelerates in. 
-//Work indicies:
-//	0 - Current acceleration level, in 100ths of a pixel per frame.
-//	1 - Working variable that is applied to the weapon's X movement.
-//	2 - Ditto, but for the weapon's Y movement.
-void Spirit_Move_Veer(lweapon spirit, float work, float acc, int angle){
-	if(SizeOfArray(work) >= 3 && Spirit_IsSpiritLW(spirit)){
-		work[0] += acc/100;
-		work[1] += VectorX((work[0]), angle);
-		work[2] += VectorY((work[0]), angle);
-		spirit->X += work[1] << 0;
-		spirit->Misc[SW_LWMISC_X_MOV] += work[1] << 0;
-		spirit->Y += work[2] << 0;
-		spirit->Misc[SW_LWMISC_Y_MOV] += work[2] << 0;
-		work[1] %= 1; //Strip whole pixel movements from the working variable used up by weapon's X movement and retain the subpixel movement.
-		work[2] %= 1; //Ditto, for Y axis.
-	}
-	else
-		return Debug->NULL();
-}
-
-//Weapon drifts in a given direction
-//Supply a float array of size 2 or higher to use. Otherwise, it does nothing.
-//Args:
-//	step - Step Speed at which the weapon drifts in. 100 = 1 pixel per frame.
-//	angle - Angle, in degrees, at which weapon accelerates in. 
-//Work indicies:
-//	0 - Working variable that is applied to the weapon's X movement.
-//	1 - Ditto, but for the weapon's Y movement.
-void Spirit_Move_Drift(lweapon spirit, float work, float step, int angle){
-	if(SizeOfArray(work) >= 2 && Spirit_IsSpiritLW(spirit)){
-		work[0] += VectorX(step/100, angle);
-		work[1] += VectorY(step/100, angle);
-		spirit->X += work[0] << 0;
-		spirit->Misc[SW_LWMISC_X_MOV] += work[1] << 0;
-		spirit->Y += work[1] << 0;
-		spirit->Misc[SW_LWMISC_Y_MOV] += work[2] << 0;
-		work[0] %= 1; //Strip whole pixel movements from the working variables used up by weapon's X movement and retain the subpixel movement.
-		work[1] %= 1; //Ditto, for Y Axis
-	}
-	else
-		return Debug->NULL();
-}
-
-//Weapon moves in a sine wave. The functional bits of code are taken straight from Ghost.zh and adapted for this header. I do not understand sine waves >.>
-//Supply a float array of size 3 or higher to use. Otherwise, it does nothing.
-//Args:
-//	amplitude - the overall amplitude the sine wave moves at.
-//	initangle - The initial angle. Set to 90 to produce a Cosine wave.
-//	angle - The angular frequency, in degrees, per frame.
-//Work indicies:
-//	0 - The current angle.
-//	1 - Working variable that is applied to the weapon's X movement.
-//	2 - Ditto, but for the weapon's Y movement.
-void Spirit_Move_Sine(lweapon spirit, float work, float amp, float initangle, float angle){
-	if(SizeOfArray(work) >= 3 && Spirit_IsSpiritLW(spirit)){
-		float offset;
-		work[0] += angle;
-		if(work[1] == 0 && work[2] == 0){ //Neither have been set yet, set the positions of those
-			work[1] = spirit->X;
-			work[2] = spirit->Y;
-		}
-    
-		// Adjust the weapon's position at an angle
-		// perpendicular to that of its forward movement.
-		offset = amp*Sin(work[0]+initangle);
+	//LWeapon flags
+	//None of these except LWF_PIERCING and LWF_ALIVE are functional
+	DEFINE LWF_NOFALL        = 0x0001; //Weapon does not fall.
+	DEFINE LWF_OBEYSOLID     = 0x0002; //Weapon respects combo solidity. The status of this flag is overridden by LWM_WALLBOUNCE. This however, does not stop it from getting blocked by combos which block it.
+	DEFINE LWF_OBEYGRAVITY   = 0x0004; //The weapon obeys gravity. This will be depreciated if ZC adds support for being able to set wherever the weapon internally obeys gravity or not
+	DEFINE LWF_PIERCING      = 0x0008; //Weapon does not die or vanish after hitting an enemy
+	DEFINE LWF_UNBLOCKABLE   = 0x0010; //Weapon can not be blocked by shields.
+	DEFINE LWF_DUMMY         = 0x0100; //Weapon does not move or hit enemies and can be controlled for other purposes.
+	//Flags which are set internally, but the user can read/write freely if they want to
+	DEFINE LWF_ALIVE         = 0x1000; //Weapon is alive. This is set internally
 	
-		//Keep the sine wave moving
-		work[1] += (spirit->Step/100)*RadianCos(spirit->Angle);
-		work[2] += (spirit->Step/100)*RadianSin(spirit->Angle);
-	
-		//Okay, here's the actual position setting
-		spirit->X = work[1]+offset*RadianCos(spirit->Angle+(PI/2));
-		spirit->Y = work[2]+offset*RadianSin(spirit->Angle+(PI/2));
-	}
-	else
-		return Debug->NULL();
-}
+	DEFINE MAX_WORKSIZE = 3; //The largest size your 'work[]' array ever needs to be. This may get larger, so, use the constant, not the value!
 
-//----------------
-//|||INCOMPLETE|||
-//----------------
-//Weapon bounces in the air, bounding along the ground. It stops bouncing if 
-//Supply a float array of 3 or higher if you don't have the setting. Otherwise, supply a float array of 4
-//Args:
-//	initjump - Initial upward velocity
-//	jumpdecay - How much is removed from the initial upward velocity after each bounce
-//	stepdecay - How much is removed from the weapon's step speed after each bounce.
-//Work Indicies:
-//	0 - The weapon's current Jump factor. This is applied to the weapon's Z position (or Y if Fake Z is used) and then decremented by gravity every frame
-//	1 - The stored upward velocity, adjusted each time the weapon bounces.
-//	2 - The current bounce number. This does nothing in the weapon itself beyond the first bounce - it is an easy way for the user to read the number of bounces the weapon has made.
-//	The following only apply if the fake Z axis setting is turned on. 
-//	3 - Weapon's fake Z value
-void Spirit_Move_Bounce(lweapon spirit, float work, float initjump, float jumpdecay, float stepdecay){
-	if(SizeOfArray(work) >= 3 && Spirit_IsSpiritLW(spirit)){ //Z axis setting is not set to fake.
-		if(work[2] <= 0){
-			TraceB(true);
-			work[0] = initjump;
-			work[1] = initjump;
-			work[2] = 1;
-			spirit->Misc[SW_LWMISC_FLAGS] |= LWF_OBEYGRAVITY;
+	//Creates a basic spirited LWeapon with all the basic attributes and returns the pointer.
+	lweapon Spirit_CreateWeapon(int type, int wscrpt, int weaponD, int parent, int x, int y, int damage, int step, int angle, int sprite, int sfx, int flags)
+	{
+		lweapon spirit = RunLWeaponScript(type, wscrpt, weaponD);
+		if(spirit->isValid())
+		{
+			spirit->X = x;
+			spirit->Y = y;
+			spirit->Damage = damage;
+			spirit->Step = step;
+			spirit->Angular = true;
+			spirit->Angle = angle;
+			spirit->UseSprite(sprite);
+			spirit->Parent = parent;
+			spirit->Misc[LWMISC_FLAGS] = (flags | LWF_ALIVE);
+			spirit->Misc[LWMISC_FLAGS_INT] = LWFI_ISSPIRIT;
+			spirit->CollDetection = false;
+			return spirit;
 		}
-		else{
-			if(!(Screen->Flags[SF_ROOMTYPE]&SFR_SIDEVIEW)){ //Handling for top down
-				if(SPIRITLW_SETTING_FAKE_Z <= 0){
-					spirit->Z = Max(spirit->Z+work[0], 0);
-					work[0] = Max(SPIRITLW_TERMINALVELOCITY*-1, work[0]-SPIRITLW_GRAVITY);
-					if(spirit->Z <= 0){ //Now rebound off the ground
-						spirit->Z = 0;
-						Screen->FastTile(7, 32, 0, 3, 0, OP_OPAQUE);
-						work[0] = work[1];
-						work[1] = Max(0, work[1]-jumpdecay);
-						spirit->Step = Max(0, spirit->Step-jumpdecay);
-						work[2] ++;
+		else //This probably shouldn't happen, but for good measure...
+		{
+			ERROR("Spirit_CreateWeapon", "Failed to create lweapon");
+			return NULL;
+		}
+	}
+
+	//Creates an LWeapon and assigns it a script and script args.
+	//Created by Venrob, edited by Zoria RPG.
+	lweapon RunLWeaponScript(int ID, int scriptNum, untyped args)
+	{
+		// Invalid script
+		if(scriptNum < 0 || scriptNum > 511) // Why allow script 0 here?
+			return NULL;
+		
+		lweapon weap = Screen->CreateLWeapon(ID);
+		weap->Script = scriptNum;
+		for(int q = Min(SizeOfArray(args)-1,7); q >= 0; --q)
+		{
+			weap->InitD[q] = args[q];
+		}
+		return weap;
+	}
+
+	//Supply a float array of size 3 or higher to use. Otherwise it does nothing.
+	//Args:
+	//	acc - Step Speed at which the weapon accelerates in. 100 = 1 pixel per frame (you probably don't want it this high unless you know what you are doing)
+	//	angle - Angle, in degrees, at which weapon accelerates in. 
+	//Work indicies:
+	//	0 - Current acceleration level, in 100ths of a pixel per frame.
+	//	1 - Working variable that is applied to the weapon's X movement.
+	//	2 - Ditto, but for the weapon's Y movement.
+	void Spirit_Move_Veer(lweapon spirit, float work, float acc, int angle)
+	{
+		DEFINE WORKSIZE = 3;
+		if(SizeOfArray(work) >= WORKSIZE && Spirit_IsSpiritLW(spirit))
+		{
+			work[0] += acc/100;
+			work[1] += VectorX((work[0]), angle);
+			work[2] += VectorY((work[0]), angle);
+			spirit->X += Floor(work[1]);
+			spirit->Misc[LWMISC_X_MOV] += Floor(work[1]);
+			spirit->Y += Floor(work[2]);
+			spirit->Misc[LWMISC_Y_MOV] += Floor(work[2]);
+			work[1] %= 1; //Strip whole pixel movements from the working variable used up by weapon's X movement and retain the subpixel movement.
+			work[2] %= 1; //Ditto, for Y axis.
+		}
+		else
+		{
+			ERROR("Spirit_Move_Veer", SizeOfArray(work) < WORKSIZE ? "Bad Array Size" : "Not a Spirit Weapon");
+		}
+	}
+
+	//Weapon drifts in a given direction
+	//Supply a float array of size 2 or higher to use. Otherwise, it does nothing.
+	//Args:
+	//	step - Step Speed at which the weapon drifts in. 100 = 1 pixel per frame.
+	//	angle - Angle, in degrees, at which weapon accelerates in. 
+	//Work indicies:
+	//	0 - Working variable that is applied to the weapon's X movement.
+	//	1 - Ditto, but for the weapon's Y movement.
+	void Spirit_Move_Drift(lweapon spirit, float work, float step, int angle)
+	{
+		DEFINE WORKSIZE = 2;
+		if(SizeOfArray(work) >= WORKSIZE && Spirit_IsSpiritLW(spirit))
+		{
+			work[0] += VectorX(step/100, angle);
+			work[1] += VectorY(step/100, angle);
+			spirit->X += Floor(work[0]);
+			spirit->Misc[LWMISC_X_MOV] += Floor(work[1]);
+			spirit->Y += Floor(work[1]);
+			spirit->Misc[LWMISC_Y_MOV] += Floor(work[2]);
+			work[0] %= 1; //Strip whole pixel movements from the working variables used up by weapon's X movement and retain the subpixel movement.
+			work[1] %= 1; //Ditto, for Y Axis
+		}
+		else
+		{
+			ERROR("Spirit_Move_Drift", SizeOfArray(work) < WORKSIZE ? "Bad Array Size" : "Not a Spirit Weapon");
+		}
+	}
+
+	//Weapon moves in a sine wave. The functional bits of code are taken straight from Ghost.zh and adapted for this header. I do not understand sine waves >.>
+	//Supply a float array of size 3 or higher to use. Otherwise, it does nothing.
+	//Args:
+	//	amplitude - the overall amplitude the sine wave moves at.
+	//	initangle - The initial angle. Set to 90 to produce a Cosine wave.
+	//	angle - The angular frequency, in degrees, per frame.
+	//Work indicies:
+	//	0 - The current angle.
+	//	1 - Working variable that is applied to the weapon's X movement.
+	//	2 - Ditto, but for the weapon's Y movement.
+	void Spirit_Move_Sine(lweapon spirit, float work, float amp, float initangle, float angle)
+	{
+		DEFINE WORKSIZE = 3;
+		if(SizeOfArray(work) >= WORKSIZE && Spirit_IsSpiritLW(spirit))
+		{
+			work[0] += angle;
+			// Adjust the weapon's position at an angle
+			// perpendicular to that of its forward movement.
+			float offset = amp*Sin(work[0]+initangle);
+			unless(work[1] || work[2]){ //Neither have been set yet, set the positions of those
+				work[1] = spirit->X;
+				work[2] = spirit->Y;
+			}
+		
+		
+			//Keep the sine wave moving
+			work[1] += (spirit->Step/100)*RadianCos(spirit->Angle);
+			work[2] += (spirit->Step/100)*RadianSin(spirit->Angle);
+		
+			//Okay, here's the actual position setting
+			spirit->X = work[1]+offset*RadianCos(spirit->Angle+(PI/2));
+			spirit->Y = work[2]+offset*RadianSin(spirit->Angle+(PI/2));
+		}
+		else
+		{
+			ERROR("Spirit_Move_Sine", SizeOfArray(work) < WORKSIZE ? "Bad Array Size" : "Not a Spirit Weapon");
+		}
+	}
+
+	//----------------
+	//|||INCOMPLETE|||
+	//----------------
+	//Weapon bounces in the air, bounding along the ground. It stops bouncing if 
+	//Supply a float array of 3 or higher if you don't have the setting. Otherwise, supply a float array of 4
+	//Args:
+	//	initjump - Initial upward velocity
+	//	jumpdecay - How much is removed from the initial upward velocity after each bounce
+	//	stepdecay - How much is removed from the weapon's step speed after each bounce.
+	//Work Indicies:
+	//	0 - The weapon's current Jump factor. This is applied to the weapon's Z position (or Y if Fake Z is used) and then decremented by gravity every frame
+	//	1 - The stored upward velocity, adjusted each time the weapon bounces.
+	//	2 - The current bounce number. This does nothing in the weapon itself beyond the first bounce - it is an easy way for the user to read the number of bounces the weapon has made.
+	//	The following only apply if the fake Z axis setting is turned on. 
+	//	3 - Weapon's fake Z value
+	void Spirit_Move_Bounce(lweapon spirit, float work, float initjump, float jumpdecay, float stepdecay)
+	{
+		DEFINE WORKSIZE = 3;
+		if(SizeOfArray(work) >= WORKSIZE && Spirit_IsSpiritLW(spirit)) //Z axis setting is not set to fake.
+		{
+			if(work[2] <= 0)
+			{
+				TraceB(true);
+				work[0] = initjump;
+				work[1] = initjump;
+				work[2] = 1;
+				spirit->Misc[LWMISC_FLAGS] |= LWF_OBEYGRAVITY;
+			}
+			else
+			{
+				unless(IsSideview()) //Handling for top down
+				{
+					unless(SPIRITLW_SETTING_FAKE_Z)
+					{
+						spirit->Z = Max(spirit->Z+work[0], 0);
+						work[0] = Max(Game->Gravity[GR_TERMINALV]*-1, work[0]-Game->Gravity[GR_STRENGTH]);
+						if(spirit->Z <= 0) //Now rebound off the ground
+						{
+							spirit->Z = 0;
+							Screen->FastTile(7, 32, 0, 3, 0, OP_OPAQUE);
+							work[0] = work[1];
+							work[1] = Max(0, work[1]-jumpdecay);
+							spirit->Step = Max(0, spirit->Step-jumpdecay);
+							++work[2];
+						}
+					}
+					else
+					{
+						ERROR("Spirit_Move_Bounce","Function does not work with fake Z (yet)");
 					}
 				}
-				else{
+				else //Handling for sideview
+				{
+					ERROR("Spirit_Move_Bounce","Function does not work in sideview (yet)");
 				}
 			}
-			else{ //Handling for sideview
-				//if(){
-				//}
+		}
+		else
+		{
+			ERROR("Spirit_Move_Bounce", SizeOfArray(work) < WORKSIZE ? "Bad Array Size" : "Not a Spirit Weapon");
+		}
+	}
+	//----------------
+	//|||INCOMPLETE|||
+	//----------------
+
+	//Weapon moves in an orbit
+	void Spirit_Move_Orbit(lweapon spirit, float work, int orbit, int increment)
+	{
+		DEFINE WORKSIZE = 3;
+		if(SizeOfArray(work) >= WORKSIZE && Spirit_IsSpiritLW(spirit))
+		{
+			ERROR("Spirit_Move_Orbit", "Function is not yet implemented");
+		}
+		else
+		{
+			ERROR("Spirit_Move_Orbit", SizeOfArray(work) < WORKSIZE ? "Bad Array Size" : "Not a Spirit Weapon");
+		}
+	}
+
+	//Handles internal stuff for ghosted weapons.
+	bool Spirit_Waitframe(lweapon spirit)
+	{
+		int suspendcounter = 0;
+		if(Global[GLOBAL_SUSPEND])
+		{
+			if(spirit->Misc[LWMISC_STEPMEM] > 0) //Restore the weapon's normal movement if it had just been unpaused.
+			{
+				spirit->Step = spirit->Misc[LWMISC_STEPMEM];
+				spirit->Misc[LWMISC_STEPMEM] = 0;
+			}
+			if(spirit->Misc[LWMISC_FLAGS_INT]&LWFI_COLLISION) //Resume colliding if it had just been unpaused, if it was meant to be colliding while paused.
+			{
+				spirit->CollDetection = true;
+				spirit->Misc[LWMISC_FLAGS_INT] &= ~LWFI_COLLISION;
 			}
 		}
-	}
-	else
-		return Debug->NULL();
-}
-//----------------
-//|||INCOMPLETE|||
-//----------------
-
-//Weapon moves in an orbit
-void Spirit_Move_Orbit(lweapon spirit, float work, int orbit, int increment){
-	if(SizeOfArray(work) >= 3 && Spirit_IsSpiritLW(spirit)){ //
-		
-	}
-}
-
-//Handles internal stuff for ghosted weapons.
-bool Spirit_Waitframe(lweapon spirit){
-	int suspendcounter = 0;
-	if(Spirit_Global[SPIRITLW_GLOBAL_SUSPEND] <= 0){
-		if(spirit->Misc[SW_LWMISC_STEPMEM] > 0){ //Restore the weapon's normal movement if it had just been unpaused.
-			spirit->Step = spirit->Misc[SW_LWMISC_STEPMEM];
-			spirit->Misc[SW_LWMISC_STEPMEM] = 0;
-		}
-		if((spirit->Misc[SW_LWMISC_FLAGS_INT]&__LWFI_COLLISION) != 0) //Resume colliding if it had just been unpaused, if it was meant to be colliding while paused.
-			spirit->CollDetection = true;
-			spirit->Misc[SW_LWMISC_FLAGS_INT] &= ~__LWFI_COLLISION;
-	}
-	if((spirit->Misc[SW_LWMISC_FLAGS]&LWF_PIERCING) != 0)
-		spirit->DeadState = WDS_ALIVE;
-	do{ //This loops for as long as the header is paused
-		if(Spirit_Global[SPIRITLW_GLOBAL_SUSPEND] > 0){
-			if(suspendcounter <= 0){ //First frame of pause processing - remember movement and wherever the weapon was in a collision state first.
-				spirit->Misc[SW_LWMISC_STEPMEM] = spirit->Step;
-				if(spirit->CollDetection)
-					spirit->Misc[SW_LWMISC_FLAGS_INT] |= __LWFI_COLLISION;
+		if(spirit->Misc[LWMISC_FLAGS]&LWF_PIERCING)
+			spirit->DeadState = WDS_ALIVE;
+		do //This loops for as long as the header is paused
+		{
+			if(Global[GLOBAL_SUSPEND])
+			{
+				if(suspendcounter <= 0) //First frame of pause processing - remember movement and wherever the weapon was in a collision state first.
+				{
+					spirit->Misc[LWMISC_STEPMEM] = spirit->Step;
+					if(spirit->CollDetection)
+						spirit->Misc[LWMISC_FLAGS_INT] |= LWFI_COLLISION;
+				}
+				spirit->Step = 0;
+				spirit->CollDetection = false;
+				++suspendcounter;
 			}
-			spirit->Step = 0;
-			spirit->CollDetection = false;
-			suspendcounter ++;
+			Waitframe();
 		}
-		Waitframe();
-	}while(Spirit_Global[SPIRITLW_GLOBAL_SUSPEND] > 0);
-	return true;
-}
-
-//Suspends all header activity
-void Spirit_Suspend(){
-	Spirit_Global[SPIRITLW_GLOBAL_SUSPEND] = 1;
-}
-
-//Resumes header activity
-void Spirit_Resume(){
-	Spirit_Global[SPIRITLW_GLOBAL_SUSPEND] = 0;
-}
-
-//Toggles the Header suspension command on and off
-void Spirit_ToggleSuspend(){
-	if(Spirit_Global[SPIRITLW_GLOBAL_SUSPEND] == 0)
-		Spirit_Suspend();
-	else
-		Spirit_Resume();
-}
-
-bool Spirit_IsSuspended(){
-	if(Spirit_Global[SPIRITLW_GLOBAL_SUSPEND] > 0)
+		while(Global[GLOBAL_SUSPEND]);
 		return true;
-	return false;
-}
-
-//Returns if the spirit is alive as identified by the header.
-bool Spirit_IsAlive(lweapon spirit){
-	if(Spirit_IsSpiritLW(spirit))
-		return (spirit->Misc[SW_LWMISC_FLAGS]&LWF_ALIVE);
-	else
-		return Debug->NULL();
-}
-
-//Kills a Spirited weapon.
-void Spirit_Kill(lweapon spirit){
-	if(Spirit_IsSpiritLW(spirit))
-		spirit->Misc[SW_LWMISC_FLAGS] &= ~LWF_ALIVE;
-}
-
-//Revive a Spirited weapon.
-void Spirit_Revive(lweapon spirit){
-	if(Spirit_IsSpiritLW(spirit))
-		spirit->Misc[SW_LWMISC_FLAGS] |= LWF_ALIVE;
-}
-
-//Returns true if the LWeapon passed is an LWeapon identified as a Spirit LWeapon by this header.
-bool Spirit_IsSpiritLW(lweapon spirit){
-	return (spirit->Misc[SW_LWMISC_FLAGS_INT]&__LWFI_ISSPIRIT);
-}
-
-//Ends scripted control over a weapon as opposed to simply killing or removing it.
-void Spirit_EndControl(lweapon spirit){
-	if(Spirit_IsSpiritLW(spirit)){
-		spirit->Misc[SW_LWMISC_FLAGS_INT] &= ~__LWFI_ISSPIRIT;
-		spirit->CollDetection = true;
-		spirit->Script = 0;
 	}
-}
 
-//Converts one of the eight directions into an angle
-int DirAngle8(int Dir){
-	if(Dir==DIR_UP)
-		return -90;
-	else if(Dir==DIR_DOWN)
-		return 90;
-	else if(Dir==DIR_LEFT)
-		return 180;
-	else if(Dir==DIR_RIGHT)
-		return 0;
-	else if(Dir==DIR_LEFTUP)
-		return -135;
-	else if(Dir==DIR_RIGHTUP)
-		return -45;
-	else if(Dir==DIR_LEFTDOWN)
-		return 135;
-	else if(Dir==DIR_RIGHTDOWN)
-		return 45;
-}
+	//Suspends all header activity
+	void Spirit_Suspend()
+	{
+		Global[GLOBAL_SUSPEND] = true;
+	}
 
-//Almost identical to the Collision function from std.zh, but slight adjustments are made to make it more accurate.
-//This function does the same thing as the Fixed Collision functions, but they are currently not included in std.zh.
-//Checks for collision between a LWeaon hitbox and the hitbox of an NPC.
-bool FixedCollision(lweapon a, npc b){
-	int ax = a->X + a->HitXOffset;
-	int bx = b->X + b->HitXOffset;
-	int ay = a->Y + a->HitYOffset;
-	int by = b->Y + b->HitYOffset;
-	return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, bx+1, by+1, bx+b->HitWidth-1, by+b->HitHeight-1) && (a->Z + a->HitZHeight >= b->Z) && (a->Z <= b->Z + b->HitZHeight);
-}
+	//Resumes header activity
+	void Spirit_Resume()
+	{
+		Global[GLOBAL_SUSPEND] = false;
+	}
 
-//Collision between the hitboxes of an LWeapon and an EWeapon
-bool FixedCollision(lweapon a, eweapon b){
-	int ax = a->X + a->HitXOffset;
-	int bx = b->X + b->HitXOffset;
-	int ay = a->Y + a->HitYOffset;
-	int by = b->Y + b->HitYOffset;
-	return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, bx+1, by+1, bx+b->HitWidth-1, by+b->HitHeight-1) && (a->Z + a->HitZHeight >= b->Z) && (a->Z <= b->Z + b->HitZHeight);
-}
+	//Toggles the Header suspension command on and off
+	void Spirit_ToggleSuspend()
+	{
+		Global[GLOBAL_SUSPEND] = !Global[GLOBAL_SUSPEND];
+	}
 
-//Collision between the hitboxes of an LWeapon and another LWeapon
-bool FixedCollision(lweapon a, lweapon b){
-	int ax = a->X + a->HitXOffset;
-	int bx = b->X + b->HitXOffset;
-	int ay = a->Y + a->HitYOffset;
-	int by = b->Y + b->HitYOffset;
-	return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, bx+1, by+1, bx+b->HitWidth-1, by+b->HitHeight-1) && (a->Z + a->HitZHeight >= b->Z) && (a->Z <= b->Z + b->HitZHeight);
-}
+	bool Spirit_IsSuspended()
+	{
+		return Global[GLOBAL_SUSPEND];
+	}
 
-//Checks for collision between a LWeaon hitbox and the hitbox of an Item.
-bool FixedCollision(lweapon a, item b){
-	int ax = a->X + a->HitXOffset;
-	int bx = b->X + b->HitXOffset;
-	int ay = a->Y + a->HitYOffset;
-	int by = b->Y + b->HitYOffset;
-	return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, bx+1, by+1, bx+b->HitWidth-1, by+b->HitHeight-1) && (a->Z + a->HitZHeight >= b->Z) && (a->Z <= b->Z + b->HitZHeight);
-}
+	//Returns if the spirit is alive as identified by the header.
+	bool Spirit_IsAlive(lweapon spirit)
+	{
+		if(Spirit_IsSpiritLW(spirit))
+			return (spirit->Misc[LWMISC_FLAGS]&LWF_ALIVE);
+		else
+			return false;
+	}
 
-//Collision between the hitboxes of an LWeapon and a FFC
-bool FixedCollision(lweapon a, ffc b){
-	int ax = a->X + a->HitXOffset;
-	int ay = a->Y + a->HitYOffset;
-	return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, b->X+1, b->Y+1, b->X+b->EffectWidth-1, b->Y+b->EffectHeight-1);
-}
+	//Kills a Spirited weapon.
+	void Spirit_Kill(lweapon spirit)
+	{
+		if(Spirit_IsSpiritLW(spirit))
+			spirit->Misc[LWMISC_FLAGS] &= ~LWF_ALIVE;
+	}
 
-bool FixedLinkCollision(lweapon a){
-	int ax = a->X + a->HitXOffset;
-	int linkx = Link->X + Link->HitXOffset;
-	int ay = a->Y + a->HitYOffset;
-	int linky = Link->Y + Link->HitYOffset;
-	return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, linkx+1, linky+1, linkx+Link->HitWidth-1, linky+Link->HitHeight-1) && (a->Z + a->HitZHeight >= Link->Z) && (a->Z <= Link->Z + Link->HitZHeight);
-}
+	//Revive a Spirited weapon.
+	void Spirit_Revive(lweapon spirit)
+	{
+		if(Spirit_IsSpiritLW(spirit))
+			spirit->Misc[LWMISC_FLAGS] |= LWF_ALIVE;
+	}
 
-//So you don't have to remember the order of the args.
-bool FixedCollision(npc a, lweapon b){
-	return FixedCollision(b, a);
-}
-bool FixedCollision(eweapon a, lweapon b){
-	return FixedCollision(b, a);
-}
-bool FixedCollision(item a, lweapon b){
-	return FixedCollision(b, a);
-}
-bool FixedCollision(ffc a, lweapon b){
-	return FixedCollision(b, a);
+	//Returns true if the LWeapon passed is an LWeapon identified as a Spirit LWeapon by this header.
+	bool Spirit_IsSpiritLW(lweapon spirit)
+	{
+		return (spirit->Misc[LWMISC_FLAGS_INT]&LWFI_ISSPIRIT);
+	}
+
+	//Ends scripted control over a weapon as opposed to simply killing or removing it.
+	void Spirit_EndControl(lweapon spirit)
+	{
+		if(Spirit_IsSpiritLW(spirit))
+		{
+			spirit->Misc[LWMISC_FLAGS_INT] &= ~LWFI_ISSPIRIT;
+			spirit->CollDetection = true;
+			spirit->Script = 0;
+		}
+	}
+
+	//Almost identical to the Collision function from std.zh, but slight adjustments are made to make it more accurate.
+	//This function does the same thing as the Fixed Collision functions, but they are currently not included in std.zh.
+	//Checks for collision between a LWeaon hitbox and the hitbox of an NPC.
+	//start FixedCollision
+	bool FixedCollision(lweapon a, npc b)
+	{
+		int ax = a->X + a->HitXOffset;
+		int bx = b->X + b->HitXOffset;
+		int ay = a->Y + a->HitYOffset;
+		int by = b->Y + b->HitYOffset;
+		return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, bx+1, by+1, bx+b->HitWidth-1, by+b->HitHeight-1) && (a->Z + a->HitZHeight >= b->Z) && (a->Z <= b->Z + b->HitZHeight);
+	}
+
+	//Collision between the hitboxes of an LWeapon and an EWeapon
+	bool FixedCollision(lweapon a, eweapon b)
+	{
+		int ax = a->X + a->HitXOffset;
+		int bx = b->X + b->HitXOffset;
+		int ay = a->Y + a->HitYOffset;
+		int by = b->Y + b->HitYOffset;
+		return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, bx+1, by+1, bx+b->HitWidth-1, by+b->HitHeight-1) && (a->Z + a->HitZHeight >= b->Z) && (a->Z <= b->Z + b->HitZHeight);
+	}
+
+	//Collision between the hitboxes of an LWeapon and another LWeapon
+	bool FixedCollision(lweapon a, lweapon b)
+	{
+		int ax = a->X + a->HitXOffset;
+		int bx = b->X + b->HitXOffset;
+		int ay = a->Y + a->HitYOffset;
+		int by = b->Y + b->HitYOffset;
+		return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, bx+1, by+1, bx+b->HitWidth-1, by+b->HitHeight-1) && (a->Z + a->HitZHeight >= b->Z) && (a->Z <= b->Z + b->HitZHeight);
+	}
+
+	//Checks for collision between a LWeaon hitbox and the hitbox of an Item.
+	bool FixedCollision(lweapon a, item b)
+	{
+		int ax = a->X + a->HitXOffset;
+		int bx = b->X + b->HitXOffset;
+		int ay = a->Y + a->HitYOffset;
+		int by = b->Y + b->HitYOffset;
+		return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, bx+1, by+1, bx+b->HitWidth-1, by+b->HitHeight-1) && (a->Z + a->HitZHeight >= b->Z) && (a->Z <= b->Z + b->HitZHeight);
+	}
+
+	//Collision between the hitboxes of an LWeapon and a FFC
+	bool FixedCollision(lweapon a, ffc b)
+	{
+		int ax = a->X + a->HitXOffset;
+		int ay = a->Y + a->HitYOffset;
+		return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, b->X+1, b->Y+1, b->X+b->EffectWidth-1, b->Y+b->EffectHeight-1);
+	}
+
+	bool FixedCollision(lweapon a)
+	{
+		int ax = a->X + a->HitXOffset;
+		int linkx = Hero->X + Hero->HitXOffset;
+		int ay = a->Y + a->HitYOffset;
+		int linky = Hero->Y + Hero->HitYOffset;
+		return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, linkx+1, linky+1, linkx+Hero->HitWidth-1, linky+Hero->HitHeight-1) && (a->Z + a->HitZHeight >= Hero->Z) && (a->Z <= Hero->Z + Hero->HitZHeight);
+	}
+
+	//So you don't have to remember the order of the args.
+	bool FixedCollision(npc a, lweapon b)
+	{
+		return FixedCollision(b, a);
+	}
+	bool FixedCollision(eweapon a, lweapon b)
+	{
+		return FixedCollision(b, a);
+	}
+	bool FixedCollision(item a, lweapon b)
+	{
+		return FixedCollision(b, a);
+	}
+	bool FixedCollision(ffc a, lweapon b)
+	{
+		return FixedCollision(b, a);
+	}
+	//end FixedCollision
 }

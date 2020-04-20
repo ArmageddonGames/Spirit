@@ -301,12 +301,6 @@ MISCELLANEOUS FUNCTIONS
 A catch all collection of functions that don't fit anywhere else
 
 ----------------------------------------
-int DirAngle8(int Dir);
-
-Args:
-Dir: One of the 8 orthogonal directions (use the DIR_ constants)
-
-Takes one of the 8 orthogonal direction and returns the angle it corresponds to. The angle returned is in degrees.
 
 ----------------------------------------
 

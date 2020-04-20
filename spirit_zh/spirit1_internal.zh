@@ -1,0 +1,24 @@
+//Internal stuff. You shouldn't need to touch this.
+namespace Spirit
+{
+	namespace Internal
+	{
+		//Internal LWeapon flags. These may change or be removed with no warning.
+		DEFINE LWFI_ISSPIRIT   = 0x0001; //Denotes that this is controlled by spirit.zh. Use a specialized function to unset this flag in the case you want to end scripted control.
+		DEFINE LWFI_AIRBORNE   = 0x0002; //Weapon has been airborne (SpiritLW_Z >= 8 or SpiritLW_Jump >= 2) at least once
+		DEFINE LWFI_COLLISION  = 0x0004; //Weapon with had collision turned on and had been paused.
+		
+		//Error function
+		void ERROR(char32 name, char32 msg)
+		{
+			printf("Spirit.zh Error: Function %s - %s\n", name, msg);
+		}
+		
+		void ERROR(char32 name, char32 msg, untyped data)
+		{
+			char32 buf[2048];
+			sprintf(buf, "Spirit.zh Error: Function %s - %s\n", name, msg);
+			printf(buf, data);
+		}
+	}
+}

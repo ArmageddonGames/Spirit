@@ -1,42 +1,51 @@
-item script TestBounceLoader{ //This item creates a basic spirited LWeapon
-	void run(){
-		//Load the D vars
-		int weaponD[8];
-		for(int a = 0; a < SizeOfArray(weaponD); a ++){
-			weaponD[a] = this->WeaponInitD[a];
+namespace Spirit
+{
+	itemdata script TestBounceLoader //This item creates a basic spirited LWeapon
+	{
+		void run()
+		{
+			//Create the weapon and launch the script
+			lweapon spirit = Spirit_CreateWeapon(LW_SCRIPT1, this->WeaponScript,
+							 {this->WeaponInitD[0], this->WeaponInitD[1], this->WeaponInitD[2], this->WeaponInitD[3],
+							 this->WeaponInitD[4], this->WeaponInitD[5], this->WeaponInitD[6], this->WeaponInitD[7]},
+							 this->ID, Hero->X, Hero->Y, this->Power*2, this->Attributes[0], DegtoRad(DirAngle(Hero->Dir)),
+							 this->Sprites[0], this->UseSound, 0);
 		}
-		//Create the weapon and launch the script
-		lweapon spirit = Spirit_CreateWeapon(LW_SCRIPT1, this->WeaponScript, weaponD, this->ID, Link->X, Link->Y, this->Power*2, this->Attributes[0], DegtoRad(DirAngle8(Link->Dir)), this->Sprites[0], this->UseSound, 0);
 	}
-}
 
-lweapon script TestBounce{
-	void run(){
-		//Start of the script. Declare your working variables here as well as any counters you need to use.
-		float work[4];
-		
-		this->Misc[SW_LWMISC_FLAGS] |= LWF_OBEYGRAVITY;
-		while(Spirit_IsAlive(this)){ //The main body of the script. The stuff the weapon actually does goes here.
-			Spirit_Move_Bounce(this, work, 3, 0.6, 30);
+	lweapon script TestBounce
+	{
+		void run()
+		{
+			//Start of the script. Declare your working variables here as well as any counters you need to use.
+			float work[4];
 			
-			if(work[0] > 5){
-				Spirit_Kill(this);
+			this->Misc[SW_LWMISC_FLAGS] |= LWF_OBEYGRAVITY;
+			while(Spirit_IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
+			{
+				Spirit_Move_Bounce(this, work, 3, 0.6, 30);
+				
+				if(work[0] > 5)
+				{
+					Spirit_Kill(this);
+				}
+				Spirit_Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
 			}
-			Spirit_Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
+			//Weapon is dead. Run death effects here.
+			
 		}
-		//Weapon is dead. Run death effects here.
-		
 	}
-}
 
-item script PauseWeapons{
-	void run(){
-		TraceS("PauseWeapons Used");
-		TraceNL();
-		Spirit_ToggleSuspend();
-		if(Spirit_IsSuspended())
-			TraceS("Header is suspended");
-		else
-			TraceS("Header is not suspended");
+	itemdata script PauseWeapons
+	{
+		void run()
+		{
+			TraceS("PauseWeapons Used:\n");
+			Spirit_ToggleSuspend();
+			if(Spirit_IsSuspended())
+				TraceS("Header is suspended\n");
+			else
+				TraceS("Header is not suspended\n");
+		}
 	}
 }
