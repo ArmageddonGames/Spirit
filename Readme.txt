@@ -10,6 +10,7 @@ ZELDA QUEST VERSION: Zelda Quest AEternal (v2.55) Alpha 29 and up
 WARNING! THIS IS IN ALPHA STATE. FEATURES MAY BE CHANGED OR REMOVED WITHOUT PRIOR WARNING. SOME FEATURES ARE INCOMPLETE OR NONFUNCTIONAL. YOU HAVE BEEN WARNED.
 
 
+
 =================== OVERVIEW ===================
 
 The header is planned to sport a number of special features which aid inexperienced scripters in the creation of custom weapons and items generated and used by the player. The header automatically handles many of the tedious tasks which must be done when handling weapons including updating stuff like collision data and pausing the weapons while the header is paused. Packaged with the header is a variety of commonly-used movement functions.
