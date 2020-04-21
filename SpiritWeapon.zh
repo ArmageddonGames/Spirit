@@ -2,7 +2,7 @@
 //This header handles spirited (or ghosted) behavior for weapons
 #option SHORT_CIRCUIT on
 #option BINARY_32BIT off
-#option TRUE_MAX_INT on
+#option TRUE_INT_SIZE on
 #option HEADER_GUARD on
 #include "std.zh" //Required for header
 //Required header subfiles

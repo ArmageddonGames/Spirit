@@ -7,7 +7,7 @@ namespace Spirit
 		GLOBAL_SZ
 	};
 
-	DEFINE SPIRITLW_HITWEAPON_DUR = 1; //How long hitting LWeapons persist.
+	DEFINE HITWEAPON_DUR = 1; //How long hitting LWeapons persist.
 
 
 	//LWeapon flags
@@ -194,7 +194,7 @@ namespace Spirit
 			{
 				unless(IsSideview()) //Handling for top down
 				{
-					unless(SPIRITLW_SETTING_FAKE_Z)
+					unless(SETTING_FAKE_Z)
 					{
 						spirit->Z = Max(spirit->Z+work[0], 0);
 						work[0] = Max(Game->Gravity[GR_TERMINALV]*-1, work[0]-Game->Gravity[GR_STRENGTH]);

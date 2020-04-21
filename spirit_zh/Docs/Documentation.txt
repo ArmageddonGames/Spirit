@@ -290,7 +290,7 @@ There are currently no death functions as of yet.
 =================== DEBUG FUNCTIONS AND SCRIPTS ===================
 
 These run debugging stuff. These can slow the script right down, so you should probably use them only when debugging.
-Enable these by setting SPIRITLW_SETTING_PRINTERRORS to 1.
+Enable these by setting SETTING_PRINTERRORS to 1.
 
 No functions of the type are implemented as of yet
 
