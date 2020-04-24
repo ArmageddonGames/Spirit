@@ -1,6 +1,6 @@
-import "std.zh"
-import "string.zh"
-import "spiritweapon_zh\Alpha-1\SpiritWeapon.zh"
+#option HEADER_GUARD on
+#include "std.zh"
+#include "SpiritWeapon.zh"
 
 global script Active{
 	void run(){
@@ -16,7 +16,7 @@ global script OnExit{
 	}
 }
 
-global script OnContinue{
+global script OnSaveLoad{
 	void run(){
 	}
 }
