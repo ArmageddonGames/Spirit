@@ -118,7 +118,6 @@ namespace Spirit
 	{
 		DEFINE WORKSIZE = 1;
 		CONST_ASSERT(WORKSIZE <= MAX_WORKSIZE, "MAX_WORKSIZE too small!");
-		CONST_ASSERT(WORKSIZE <= MAX_WORKSIZE, "MAX_WORKSIZE too small!");
 		if(SizeOfArray(work) >= WORKSIZE && Spirit_IsSpiritLW(spirit))
 		{
 			work[0] += angle;
@@ -159,7 +158,6 @@ namespace Spirit
 		{
 			if(work[2] <= 0)
 			{
-				TraceB(true);
 				work[0] = initjump;
 				work[1] = initjump;
 				work[2] = 1;
@@ -226,13 +224,12 @@ namespace Spirit
 		{
 			if(spirit->Misc[LWMISC_STEPMEM] > 0) //Restore the weapon's normal movement if it had just been unpaused.
 			{
-				printf("Spirit.zh: Stored Step Speed of Weapon of UID %i: %i\n", spirit, spirit->Misc[LWMISC_STEPMEM]);
 				spirit->Step = spirit->Misc[LWMISC_STEPMEM];
 				spirit->Misc[LWMISC_STEPMEM] = 0;
 			}
 			if(spirit->Misc[LWMISC_FLAGS_INT]&LWFI_COLLISION) //Resume colliding if it had just been unpaused, if it was meant to be colliding while paused.
 			{
-				printf("Spirit.zh: Stored Collision Detection of Weapon of UID %i: %i\n", spirit, (spirit->Misc[LWMISC_FLAGS_INT]&LWFI_COLLISION));
+				//printf("Spirit.zh: Stored Collision Detection of Weapon of UID %i: %i\n", spirit, (spirit->Misc[LWMISC_FLAGS_INT]&LWFI_COLLISION));
 				spirit->CollDetection = true;
 				spirit->Misc[LWMISC_FLAGS_INT] &= ~LWFI_COLLISION;
 			}

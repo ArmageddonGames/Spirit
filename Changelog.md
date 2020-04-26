@@ -1,6 +1,13 @@
 # SPIRIT WEAPON FOR ZELDA QUEST AETERNAL CHANGELOG
 
 
+### Alpha 2 Build 2. April 27th 2020
+
+- Fixed a couple of small errors
+- Fixed up some formatting in the To Do List
+- Removed a trace used for debugging in `Spirit_Waitframe` and commented the other. Another trace in `Spirit_Move_Bounce` has been removed too
+
+
 ### Alpha 2 Build 1. April 27th 2020
 
 - Introduced the Changelog and the To Do List

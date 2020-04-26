@@ -5,7 +5,7 @@
 
 **AUTHOR:** *Orithan Fox*
 
-**VERSION:** Alpha 2, Build 1
+**VERSION:** Alpha 2, Build 2
 
 **ZELDA QUEST VERSION:** *Zelda Quest AEternal* (v2.55) Alpha 66 and up
 
