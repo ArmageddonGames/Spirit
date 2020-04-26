@@ -18,7 +18,7 @@ namespace Spirit
 {
 	CONFIG SPT_BLANK = 44; //Used for several functions like creating invisible "hitting" weapons. Set this the number of a blank sprite in the Sprite Editor. The blank sprite must use the top left tile of a 4x4 block of empty tiles.
 
-	//Small (1x1) shadow settings. Currently not operational
+	//Small (1x1) shadow settings. Currently not operational and these are depreciated with the Script Setting "Weapons have Shadow"
 	//If SPIRITLW_SHADOW_TILE is 0, small shadows will be disabled
 	CONFIG SHADOW_TILE = 631;
 	CONFIG SHADOW_CSET = 8;
@@ -41,7 +41,7 @@ namespace Spirit
 	CONFIG BUFFER_SIZE = 16; //The number of LWeapons that can be stored in the GhostWeaponBuffer
 
 	//Settings
-	CONFIGB SETTING_FAKE_Z = false; //If enabled, spirited weapons never travel on the Z axis. When they would travel on the Z axis in non-sideview screens, the height effect is faked by instead manipulating their Y value. 0 = Disabled, 1 = Enabled.
+	CONFIGB SETTING_FAKE_Z = false; //If enabled, spirited weapons never travel on the Z axis. When they would travel on the Z axis in non-sideview screens, the height effect is faked by instead manipulating their Y value.
 	CONFIGB SETTING_BOMB_SELFHURT = true; //If enabled, bombs placed with this header can hurt Hero
 	
 	CONFIG HIT_MAXCOOLDOWN = 4; //Maximum Time, in frames, spirited LWeapons can not hit again after hitting a target once. This is done to reduce the amount of blocking noises that get produced.
@@ -59,11 +59,13 @@ namespace Spirit
 	CONFIG LWMISC_FLAGS            = 30; //The weapon's spirited flags, so it can receive special spirited effects from the header.
 	CONFIG LWMISC_FLAGS_INT        = 31; //The weapon's internal spirited flags, which are set by the script. All Misc[] variables except this one can be used by non-spirited weapons.
 
-	//NPC Misc[] entries. Set so they don't conflict with existing scripts.
+	/*
+	//NPC Misc[] entries. Set so they don't conflict with existing scripts. Are not used right now
 	CONFIG NPCMISC_STATUS          = 12; //Keeps track of scripted NPC status afflictions. NOTE that each NPC can only have one status at a time.
 	CONFIG NPCMISC_STATUS_STRENGTH = 13; //How strong the affliction is.
 	CONFIG NPCMISC_STATUS_DURATION = 14; //Affliction duration.
 	//End of Settings
+	*/
 	
 	//Set up internal namespace in main file
 	namespace Internal{}

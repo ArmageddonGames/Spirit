@@ -8,11 +8,64 @@ namespace Spirit
 			lweapon spirit = Spirit_CreateWeapon(LW_SCRIPT1, this->WeaponScript,
 							 {this->WeaponInitD[0], this->WeaponInitD[1], this->WeaponInitD[2], this->WeaponInitD[3],
 							 this->WeaponInitD[4], this->WeaponInitD[5], this->WeaponInitD[6], this->WeaponInitD[7]},
-							 this->ID, Hero->X, Hero->Y, this->Power*2, this->Attributes[0], DegtoRad(DirAngle(Hero->Dir)),
+							 this->ID, Hero->X, Hero->Y, this->Power*2, this->Attributes[0], DirRad(Hero->Dir),
 							 this->Sprites[0], this->UseSound, 0);
 		}
 	}
+	
+	lweapon script TestVeer
+	{
+		void run()
+		{
+			//Start of the script. Declare your working variables here as well as any counters you need to use.
+			float work[1];
 
+			while(Spirit_IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
+			{
+				Spirit_Move_Veer(this, work, 5, 90);
+				
+				Spirit_Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
+			}
+			//Weapon is dead. Run death effects here.
+			
+		}
+	}
+	
+	lweapon script TestDrift
+	{
+		void run()
+		{
+			//Start of the script. Declare your working variables here as well as any counters you need to use.
+
+			while(Spirit_IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
+			{
+				Spirit_Move_Drift(this, 50, 90);
+				
+				Spirit_Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
+			}
+			//Weapon is dead. Run death effects here.
+			
+		}
+	}
+	
+	lweapon script TestSine
+	{
+		void run(int amp, int initangle, int rot)
+		{
+			//Start of the script. Declare your working variables here as well as any counters you need to use.
+			float work[3];
+
+			while(Spirit_IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
+			{
+				Spirit_Move_Sine(this, work, amp, initangle, rot);
+				
+				Spirit_Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
+			}
+			//Weapon is dead. Run death effects here.
+			
+		}
+	}
+	
 	lweapon script TestBounce
 	{
 		void run()

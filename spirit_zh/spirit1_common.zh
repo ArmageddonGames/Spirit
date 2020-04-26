@@ -65,29 +65,21 @@ namespace Spirit
 		}
 		return weap;
 	}
-
-	//Supply a float array of size 3 or higher to use. Otherwise it does nothing.
+	//Supply a float array of size 1 or higher to use. Otherwise it does nothing.
 	//Args:
 	//	acc - Step Speed at which the weapon accelerates in. 100 = 1 pixel per frame (you probably don't want it this high unless you know what you are doing)
 	//	angle - Angle, in degrees, at which weapon accelerates in. 
 	//Work indicies:
 	//	0 - Current acceleration level, in 100ths of a pixel per frame.
-	//	1 - Working variable that is applied to the weapon's X movement.
-	//	2 - Ditto, but for the weapon's Y movement.
-	void Spirit_Move_Veer(lweapon spirit, float work, float acc, int angle)
+	void Spirit_Move_Veer(lweapon spirit, untyped work, float acc, int angle)
 	{
-		DEFINE WORKSIZE = 3;
+		DEFINE WORKSIZE = 1;
+		CONST_ASSERT(WORKSIZE <= MAX_WORKSIZE, "MAX_WORKSIZE too small!");
 		if(SizeOfArray(work) >= WORKSIZE && Spirit_IsSpiritLW(spirit))
 		{
 			work[0] += acc/100;
-			work[1] += VectorX((work[0]), angle);
-			work[2] += VectorY((work[0]), angle);
-			spirit->X += Floor(work[1]);
-			spirit->Misc[LWMISC_X_MOV] += Floor(work[1]);
-			spirit->Y += Floor(work[2]);
-			spirit->Misc[LWMISC_Y_MOV] += Floor(work[2]);
-			work[1] %= 1; //Strip whole pixel movements from the working variable used up by weapon's X movement and retain the subpixel movement.
-			work[2] %= 1; //Ditto, for Y axis.
+			spirit->X += VectorX((work[0]), angle);
+			spirit->Y += VectorY((work[0]), angle);
 		}
 		else
 		{
@@ -96,30 +88,19 @@ namespace Spirit
 	}
 
 	//Weapon drifts in a given direction
-	//Supply a float array of size 2 or higher to use. Otherwise, it does nothing.
 	//Args:
 	//	step - Step Speed at which the weapon drifts in. 100 = 1 pixel per frame.
-	//	angle - Angle, in degrees, at which weapon accelerates in. 
-	//Work indicies:
-	//	0 - Working variable that is applied to the weapon's X movement.
-	//	1 - Ditto, but for the weapon's Y movement.
-	void Spirit_Move_Drift(lweapon spirit, float work, float step, int angle)
+	//	angle - Angle, in degrees, at which weapon drifts in. 
+	void Spirit_Move_Drift(lweapon spirit, float step, int angle)
 	{
-		DEFINE WORKSIZE = 2;
-		if(SizeOfArray(work) >= WORKSIZE && Spirit_IsSpiritLW(spirit))
+		if(Spirit_IsSpiritLW(spirit))
 		{
-			work[0] += VectorX(step/100, angle);
-			work[1] += VectorY(step/100, angle);
-			spirit->X += Floor(work[0]);
-			spirit->Misc[LWMISC_X_MOV] += Floor(work[1]);
-			spirit->Y += Floor(work[1]);
-			spirit->Misc[LWMISC_Y_MOV] += Floor(work[2]);
-			work[0] %= 1; //Strip whole pixel movements from the working variables used up by weapon's X movement and retain the subpixel movement.
-			work[1] %= 1; //Ditto, for Y Axis
+			spirit->X += VectorX(step/100, angle);
+			spirit->Y += VectorY(step/100, angle);
 		}
 		else
 		{
-			ERROR("Spirit_Move_Drift", SizeOfArray(work) < WORKSIZE ? "Bad Array Size" : "Not a Spirit Weapon");
+			ERROR("Spirit_Move_Drift", "Not a Spirit Weapon");
 		}
 	}
 
@@ -127,34 +108,27 @@ namespace Spirit
 	//Supply a float array of size 3 or higher to use. Otherwise, it does nothing.
 	//Args:
 	//	amplitude - the overall amplitude the sine wave moves at.
-	//	initangle - The initial angle. Set to 90 to produce a Cosine wave.
-	//	angle - The angular frequency, in degrees, per frame.
+	//	initangle - The initial angle.
+	//	angle - The angular frequency, in degrees, per frame. Set to a negative number to produce Cosine movement.
 	//Work indicies:
 	//	0 - The current angle.
 	//	1 - Working variable that is applied to the weapon's X movement.
 	//	2 - Ditto, but for the weapon's Y movement.
-	void Spirit_Move_Sine(lweapon spirit, float work, float amp, float initangle, float angle)
+	void Spirit_Move_Sine(lweapon spirit, untyped work, float amp, float initangle, float angle)
 	{
-		DEFINE WORKSIZE = 3;
+		DEFINE WORKSIZE = 1;
+		CONST_ASSERT(WORKSIZE <= MAX_WORKSIZE, "MAX_WORKSIZE too small!");
+		CONST_ASSERT(WORKSIZE <= MAX_WORKSIZE, "MAX_WORKSIZE too small!");
 		if(SizeOfArray(work) >= WORKSIZE && Spirit_IsSpiritLW(spirit))
 		{
 			work[0] += angle;
 			// Adjust the weapon's position at an angle
 			// perpendicular to that of its forward movement.
 			float offset = amp*Sin(work[0]+initangle);
-			unless(work[1] || work[2]){ //Neither have been set yet, set the positions of those
-				work[1] = spirit->X;
-				work[2] = spirit->Y;
-			}
-		
-		
-			//Keep the sine wave moving
-			work[1] += (spirit->Step/100)*RadianCos(spirit->Angle);
-			work[2] += (spirit->Step/100)*RadianSin(spirit->Angle);
 		
 			//Okay, here's the actual position setting
-			spirit->X = work[1]+offset*RadianCos(spirit->Angle+(PI/2));
-			spirit->Y = work[2]+offset*RadianSin(spirit->Angle+(PI/2));
+			spirit->X += offset*RadianCos(spirit->Angle+(PI/2));
+			spirit->Y += offset*RadianSin(spirit->Angle+(PI/2));
 		}
 		else
 		{
@@ -177,9 +151,10 @@ namespace Spirit
 	//	2 - The current bounce number. This does nothing in the weapon itself beyond the first bounce - it is an easy way for the user to read the number of bounces the weapon has made.
 	//	The following only apply if the fake Z axis setting is turned on. 
 	//	3 - Weapon's fake Z value
-	void Spirit_Move_Bounce(lweapon spirit, float work, float initjump, float jumpdecay, float stepdecay)
+	void Spirit_Move_Bounce(lweapon spirit, untyped work, float initjump, float jumpdecay, float stepdecay)
 	{
 		DEFINE WORKSIZE = 3;
+		CONST_ASSERT(WORKSIZE <= MAX_WORKSIZE, "MAX_WORKSIZE too small!");
 		if(SizeOfArray(work) >= WORKSIZE && Spirit_IsSpiritLW(spirit)) //Z axis setting is not set to fake.
 		{
 			if(work[2] <= 0)
@@ -229,9 +204,10 @@ namespace Spirit
 	//----------------
 
 	//Weapon moves in an orbit
-	void Spirit_Move_Orbit(lweapon spirit, float work, int orbit, int increment)
+	void Spirit_Move_Orbit(lweapon spirit, untyped work, int orbit, int increment)
 	{
-		DEFINE WORKSIZE = 3;
+		DEFINE WORKSIZE = 1;
+		CONST_ASSERT(WORKSIZE <= MAX_WORKSIZE, "MAX_WORKSIZE too small!");
 		if(SizeOfArray(work) >= WORKSIZE && Spirit_IsSpiritLW(spirit))
 		{
 			ERROR("Spirit_Move_Orbit", "Function is not yet implemented");
@@ -242,19 +218,21 @@ namespace Spirit
 		}
 	}
 
-	//Handles internal stuff for ghosted weapons.
+	//Handles internal stuff for spirited weapons.
 	bool Spirit_Waitframe(lweapon spirit)
 	{
 		int suspendcounter = 0;
-		if(Global[GLOBAL_SUSPEND])
+		if(!Global[GLOBAL_SUSPEND])
 		{
 			if(spirit->Misc[LWMISC_STEPMEM] > 0) //Restore the weapon's normal movement if it had just been unpaused.
 			{
+				printf("Spirit.zh: Stored Step Speed of Weapon of UID %i: %i\n", spirit, spirit->Misc[LWMISC_STEPMEM]);
 				spirit->Step = spirit->Misc[LWMISC_STEPMEM];
 				spirit->Misc[LWMISC_STEPMEM] = 0;
 			}
 			if(spirit->Misc[LWMISC_FLAGS_INT]&LWFI_COLLISION) //Resume colliding if it had just been unpaused, if it was meant to be colliding while paused.
 			{
+				printf("Spirit.zh: Stored Collision Detection of Weapon of UID %i: %i\n", spirit, (spirit->Misc[LWMISC_FLAGS_INT]&LWFI_COLLISION));
 				spirit->CollDetection = true;
 				spirit->Misc[LWMISC_FLAGS_INT] &= ~LWFI_COLLISION;
 			}
@@ -298,7 +276,8 @@ namespace Spirit
 	{
 		Global[GLOBAL_SUSPEND] = !Global[GLOBAL_SUSPEND];
 	}
-
+	
+	//Returns true if the header is suspended
 	bool Spirit_IsSuspended()
 	{
 		return Global[GLOBAL_SUSPEND];

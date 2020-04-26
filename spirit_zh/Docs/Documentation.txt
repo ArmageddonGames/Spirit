@@ -46,9 +46,9 @@ Biggoron's Sword (The Oracle of Ages/Seasons)
 Cane of Pacci (The Minish Cap)
 Tornado Rod (A Link Between Worlds)
 Spear (Breath of the Wild)
-Pocket Weapon - Pockets an EWeapon and can send it back later at twice the power
+Pocket Weapon - Pockets an EWeapon and can send it back later at twice the power similar to Villager's special in Super Smash Bros.
 Arc Bow - The bow's trajectory can arc upwards.
-Splitting Bombs - A bomb that splits into four more bombs... which each split into four more bombs. A great party trick!
+Splitting Bombs - A bomb that splits into four more bombs... which each split into four more bombs, right out of Borderlands. A great party trick!
 Baby Octorok - A baby Octorok that approaches enemy NPCs and fires rocks at them.
 
 
@@ -197,13 +197,11 @@ In order to use these functions, you must first supply an array of at least the 
 
 
 +---------------------------------------+
-void Spirit_Move_Veer(lweapon spirit, float work[3], float acc, int angle);
+void Spirit_Move_Veer(lweapon spirit, untyped work[1], float acc, int angle);
 
 spirit: LWeapon passed.
-work[3]: An array containing the variables the movement type needs to work. You must supply an array of at least size 3 here.
+work[1]: An array containing the variables the movement type needs to work. You must supply an array of at least size 3 here.
 	0: Current acceleration level, in 100ths of a pixel per frame.
-	1: Working variable that is applied to the weapon's X movement.
-	2: Ditto, but for the weapon's Y movement.
 acc: Step Speed at which the weapon accelerates in. 100 = 1 pixel per frame (you probably don't want it this high unless you know what you are doing)
 angle: The direction in which the weapon accelerates in, in degrees.
 +---------------------------------------+
@@ -212,12 +210,9 @@ Causes the weapon to accelerate at an angle.
 
 
 +---------------------------------------+
-void Spirit_Move_Drift(lweapon spirit, float work[2], float step, int angle);
+void Spirit_Move_Drift(lweapon spirit, float step, int angle);
 
 spirit: LWeapon passed.
-work[2]: An array containing the variables the movement type needs to work. You must supply an array of at least size 2 here.
-	0: Working variable that is applied to the weapon's X movement.
-	1: Ditto, but for the weapon's Y movement.
 step: Step Speed at which the weapon drifts at. 100 = 1 pixel per frame.
 angle: The direction in which it is drifting in, in degrees.
 +---------------------------------------+
@@ -226,16 +221,14 @@ Causes the weapon to drift at an angle.
 
 
 +---------------------------------------+
-void Spirit_Move_Sine(lweapon spirit, float work[3], float amp, float initangle, float angle);
+void Spirit_Move_Sine(lweapon spirit, untyped work[1], float amp, float initangle, float angle);
 
 spirit: LWeapon passed.
-work[3]: An array containing the variables the movement type needs to work. You must supply an array of at least size 3 here.
+work[1]: An array containing the variables the movement type needs to work. You must supply an array of at least size 3 here.
 	0: The current angle.
-	1: Working variable that is applied to the weapon's X movement.
-	2: Ditto, but for the weapon's Y movement.
 amp: The overall amplitude the sine wave moves at
-initangle: The initial angle. Set to 90 to produce a Cosine wave.
-angle: The angular frequency, in degrees, per frame.
+initangle: The initial angle.
+angle: The angular frequency, in degrees, per frame. Set to a negative number to produce Cosine movement.
 +---------------------------------------+
 
 Causes the weapon to move in a sine wave.
@@ -244,7 +237,7 @@ Orithan's note: I have no idea how to Sine Wave x.x . I had to lift the function
 
 +---------------------------------------+
 !INCOMPLETE!
-void Spirit_Move_Bounce(lweapon spirit, float work[3 or 4], float initjump, float jumpdecay, float stepdecay);
+void Spirit_Move_Bounce(lweapon spirit, untyped work[3 or 4], float initjump, float jumpdecay, float stepdecay);
 
 spirit: LWeapon passed.
 work[3 or 4]: An array containing the variables the movement type needs to work. You must supply an array of at least size 3 if not using the Fake Z Axis setting or 4 if you are using it.
@@ -263,13 +256,11 @@ Causes the weapon to bounce in a line. This is currently functional but incomple
 
 +---------------------------------------+
 !NON-FUNCTIONAL!
-void Spirit_Move_Orbit(lweapon spirit, float work[3], int orbit, int increment);
+void Spirit_Move_Orbit(lweapon spirit, untyped work[1], int orbit, int increment);
 
 spirit: LWeapon passed.
-work[3]: An array containing the variables the movement type needs to work. You must supply an array of at least size 3 here.
+work[1]: An array containing the variables the movement type needs to work. You must supply an array of at least size 3 here.
 	0: The current angle.
-	1: Working variable that is applied to the weapon's X movement.
-	2: Ditto, but for the weapon's Y movement.
 amp: The overall amplitude the sine wave moves at
 initangle: The initial angle. Set to 90 to produce a Cosine wave.
 angle: The angular frequency, in degrees, per frame.

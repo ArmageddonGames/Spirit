@@ -2,9 +2,13 @@
 
 ## HEADER INFORMATION
 **NAME:** *Spirit Weapon*
+
 **AUTHOR:** *Orithan Fox*
-**VERSION:** Alpha 1, Build 2
+
+**VERSION:** Alpha 2, Build 1
+
 **ZELDA QUEST VERSION:** *Zelda Quest AEternal* (v2.55) Alpha 66 and up
+
 
 ***WARNING! THIS IS IN ALPHA STATE. FEATURES MAY BE CHANGED OR REMOVED WITHOUT PRIOR WARNING. SOME FEATURES ARE INCOMPLETE OR NONFUNCTIONAL. YOU HAVE BEEN WARNED.***
 
@@ -16,7 +20,8 @@ The header is planned to sport a number of special features which aid inexperien
 
 Any functions, constants, etc whose names are marked with `__` at the start are reserved for internal use. They may change or be removed in future versions without warning.
 
-It is also important that, if using this header and are using the Explode death type, that you turn off the quest rule "Own Bombs Hurt Player" due to a quirk in how blast damage from explosions generated via script is calculated. When you set the Damage of a Bomb Blast LWeapon generated via script; the bomb blast now hits the Player for *whole* hearts equal to the weapon's Damage (eg. You set a Bomb Blast's Damage to 8 via script. Instead of dealing 2 Hearts of damage like what most weapons do, it deals 8 Hearts of damage to the Player).
+It is also important that, if using this header and are using the Explode death type, that you turn off the quest rule `Scripted Bomb LWeapons Hurt Link` under `Quest->Rules->Items` due to a quirk in how blast damage from explosions generated via script is calculated. When you set the Damage of a Bomb Blast LWeapon generated via script; the bomb blast now hits the Player for *whole* hearts equal to the weapon's Damage (eg. You set a Bomb Blast's Damage to 8 via script. Instead of dealing 2 Hearts of damage like what most weapons do, it deals 8 Hearts of damage to the Player).
+Another setting you should check before setting up this header is `Sprite Coordinates are Float` in the `objects` tab under `ZScript->Quest Script Settings`.
 
 
 
@@ -37,19 +42,20 @@ For more advanced scripters who might be more comfortable with how ZScript works
 
 ## ANATOMY OF A SPIRIT WEAPON SCRIPT
 
-
 A Spirit Weapon script has a basic anatomy which clearly outlines where to slot the components of your script into. There are four clearly defined components of the script weapon anatomy, defined in the following example.
 
 The following example script is a fully functional Spirit Weapon script, stripped down to its bare bones. The comment blocks detail each component of the script
 Example script:
 ```
 lweapon script ExampleWeapon{
-	void run(){ 
+	void run()
+	{ 
 		/*
 		START
 		At the beginning of the script, after void run() and before the body of the script. Declare your working variables here as well as any counters you need to use and anything else that happens when the script is assigned.
 		*/
-		while(Spirit_IsAlive(this)){
+		while(Spirit_IsAlive(this))
+		{
 			/*
 			BODY
 			Run the stuff the weapon does during the time the script runs. This includes stuff that is run in loops, which you will always need when running a Spirit Weapon script.
@@ -59,7 +65,7 @@ lweapon script ExampleWeapon{
 			/*
 			UPDATE
 			Directly before Spirit_Waitframe in any given loop that is needed to run for more than a frame, you put stuff that needs to be updated every frame of the loop
-			"Spirit_Waitframe(this)" can be replaced with a custom Waitframe function that also calls Spirit_Waitframe at the end if necessary. Remember to also pass this weapon's pointer through as well!
+			"Spirit_Waitframe(this)" can be replaced with a custom Waitframe function that also calls Spirit_Waitframe at the end if necessary. Remember to also pass the weapon's pointer through as well!
 			*/
 			Spirit_Waitframe(this);
 		}
@@ -68,7 +74,8 @@ lweapon script ExampleWeapon{
 		You can run several different loops in a spirit LWeapon script before the weapon is to die. If they are to persist more than a frame, they also need Spirit_Waitframe and, if necessary, other updates to be run
 		*/
 		
-		if(!Spirit_IsAlive(this)){
+		if(!Spirit_IsAlive(this))
+		{
 			/*
 			DEATH
 			Run effects that occur after the weapon is set to die. This can occur without having flagged the weapon as dead (or having used Spirit_Kill()) if omit the conditional but it is highly recommended that you use it because it allows for other scripts to detect that the weapon has died.
@@ -118,6 +125,7 @@ Currently the demo quest is very barren and in a pre-alpha state. It currently o
 
 ###### Spirit ZH credits:
 **ZoriaRPG:** Providing support
+
 **Venrob:** Providing support and some code
 
 ###### Demo Quest credits:
