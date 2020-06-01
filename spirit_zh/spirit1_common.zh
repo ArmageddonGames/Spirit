@@ -10,13 +10,13 @@ namespace Spirit
 	DEFINE HITWEAPON_DUR = 1; //How long hitting LWeapons persist.
 
 
-	//LWeapon flags
+	//LWeapon flags. OR (|) them together when setting spirit->Misc[LWMISC_FLAGS]
 	//None of these except LWF_PIERCING and LWF_ALIVE are functional
-	DEFINE LWF_NOFALL        = 0x0001; //Weapon does not fall.
-	DEFINE LWF_OBEYSOLID     = 0x0002; //Weapon respects combo solidity. The status of this flag is overridden by LWM_WALLBOUNCE. This however, does not stop it from getting blocked by combos which block it.
-	DEFINE LWF_OBEYGRAVITY   = 0x0004; //The weapon obeys gravity. This will be depreciated if ZC adds support for being able to set wherever the weapon internally obeys gravity or not
-	DEFINE LWF_PIERCING      = 0x0008; //Weapon does not die or vanish after hitting an enemy
-	DEFINE LWF_UNBLOCKABLE   = 0x0010; //Weapon can not be blocked by shields.
+	DEFINE LWF_OBEYSOLID     = 0x0001; //Weapon respects combo solidity. The status of this flag is overridden by LWM_WALLBOUNCE. This however, does not stop it from getting blocked by combos which block it.
+	DEFINE LWF_PIERCING      = 0x0002; //Weapon does not die or vanish after hitting an enemy
+	DEFINE LWF_UNBLOCKABLE   = 0x0004; //Weapon can not be blocked by shields.
+	DEFINE LWF_NOFALL        = 0x0008; //Weapon obeys height physics when weapon->Jump is set. This will reduce the weapon's step speed as it travels through the air.
+	DEFINE LWF_JUMPPHYSICS   = 0x0010; //Weapon obeys height physics when weapon->Jump is set. This will reduce the weapon's step speed as it travels through the air.
 	DEFINE LWF_DUMMY         = 0x0100; //Weapon does not move or hit enemies and can be controlled for other purposes.
 	//Flags which are set internally, but the user can read/write freely if they want to
 	DEFINE LWF_ALIVE         = 0x1000; //Weapon is alive. This is set internally
@@ -39,7 +39,7 @@ namespace Spirit
 			spirit->Parent = parent;
 			spirit->Misc[LWMISC_FLAGS] = (flags | LWF_ALIVE);
 			spirit->Misc[LWMISC_FLAGS_INT] = LWFI_ISSPIRIT;
-			spirit->CollDetection = false;
+			
 			return spirit;
 		}
 		else //This probably shouldn't happen, but for good measure...
@@ -145,23 +145,20 @@ namespace Spirit
 	//	jumpdecay - How much is removed from the initial upward velocity after each bounce
 	//	stepdecay - How much is removed from the weapon's step speed after each bounce.
 	//Work Indicies:
-	//	0 - The weapon's current Jump factor. This is applied to the weapon's Z position (or Y if Fake Z is used) and then decremented by gravity every frame
-	//	1 - The stored upward velocity, adjusted each time the weapon bounces.
-	//	2 - The current bounce number. This does nothing in the weapon itself beyond the first bounce - it is an easy way for the user to read the number of bounces the weapon has made.
+	//	0 - The stored upward velocity, adjusted each time the weapon bounces.
+	//	1 - The current bounce number. This does nothing in the weapon itself beyond the first bounce - it is an easy way for the user to read the number of bounces the weapon has made.
 	//	The following only apply if the fake Z axis setting is turned on. 
-	//	3 - Weapon's fake Z value
+	//	2 - Weapon's fake Z value
 	void Spirit_Move_Bounce(lweapon spirit, untyped work, float initjump, float jumpdecay, float stepdecay)
 	{
 		DEFINE WORKSIZE = 3;
 		CONST_ASSERT(WORKSIZE <= MAX_WORKSIZE, "MAX_WORKSIZE too small!");
 		if(SizeOfArray(work) >= WORKSIZE && Spirit_IsSpiritLW(spirit)) //Z axis setting is not set to fake.
 		{
-			if(work[2] <= 0)
+			if(work[1] <= 0)
 			{
 				work[0] = initjump;
-				work[1] = initjump;
-				work[2] = 1;
-				spirit->Misc[LWMISC_FLAGS] |= LWF_OBEYGRAVITY;
+				work[1] = 1;
 			}
 			else
 			{
@@ -169,16 +166,15 @@ namespace Spirit
 				{
 					unless(SETTING_FAKE_Z)
 					{
-						spirit->Z = Max(spirit->Z+work[0], 0);
-						work[0] = Max(Game->Gravity[GR_TERMINALV]*-1, work[0]-Game->Gravity[GR_STRENGTH]);
+						//spirit->Z = Max(spirit->Z+work[0], 0);
+						//work[0] = Max(Game->Gravity[GR_TERMINALV]*-1, work[0]-Game->Gravity[GR_STRENGTH]);
 						if(spirit->Z <= 0) //Now rebound off the ground
 						{
-							spirit->Z = 0;
-							Screen->FastTile(7, 32, 0, 3, 0, OP_OPAQUE);
-							work[0] = work[1];
-							work[1] = Max(0, work[1]-jumpdecay);
+							//spirit->Z = 0;
+							spirit->Jump = work[0];
+							work[0] = Max(0, work[0]-jumpdecay);
 							spirit->Step = Max(0, spirit->Step-jumpdecay);
-							++work[2];
+							++work[1];
 						}
 					}
 					else
@@ -219,40 +215,78 @@ namespace Spirit
 	//Handles internal stuff for spirited weapons.
 	bool Spirit_Waitframe(lweapon spirit)
 	{
-		int suspendcounter = 0;
-		if(!Global[GLOBAL_SUSPEND])
-		{
-			if(spirit->Misc[LWMISC_STEPMEM] > 0) //Restore the weapon's normal movement if it had just been unpaused.
-			{
-				spirit->Step = spirit->Misc[LWMISC_STEPMEM];
-				spirit->Misc[LWMISC_STEPMEM] = 0;
-			}
-			if(spirit->Misc[LWMISC_FLAGS_INT]&LWFI_COLLISION) //Resume colliding if it had just been unpaused, if it was meant to be colliding while paused.
-			{
-				//printf("Spirit.zh: Stored Collision Detection of Weapon of UID %i: %i\n", spirit, (spirit->Misc[LWMISC_FLAGS_INT]&LWFI_COLLISION));
-				spirit->CollDetection = true;
-				spirit->Misc[LWMISC_FLAGS_INT] &= ~LWFI_COLLISION;
-			}
-		}
+		DEFINE SUSPENDSIZE = 4;
+		untyped suspend[SUSPENDSIZE];
+		/*Keeps track of various things to be kept track of when the header is suspended.
+		0 - Amount of time header has been suspended for (int)
+		1 - Stored step speed (float)
+		2 - Stored Collision Detection (bool)
+		3 - Stored Gravity Obedience (bool)*/
+		
+		//Piercing weapons stay alive after hitting enemies
 		if(spirit->Misc[LWMISC_FLAGS]&LWF_PIERCING)
 			spirit->DeadState = WDS_ALIVE;
+		
+		//Code for handling weapons with gravity
+		if(spirit->Gravity)
+		{
+			//Code for handling weapons that obey gravity in Sideview.
+			if(IsSideview())
+			{
+				//Cut the weapon's jump if it collides with the ceiling of a combo.
+				if(spirit->Jump > 0)
+				{
+					if(SolidRectCollision(spirit->X+spirit->HitXOffset, spirit->Y+spirit->HitYOffset, spirit->X+spirit->HitXOffset+spirit->HitWidth, spirit->Y+spirit->HitYOffset+spirit->HitHeight, 1110b))
+					{
+						spirit->Jump = 0;
+					}
+				}
+				if(spirit->Step > 0)
+				{
+					//Halt the weapon if it collides with the sides of a solid combo.
+					if(SolidRectCollision(spirit->X+spirit->HitXOffset, spirit->Y+spirit->HitYOffset, spirit->X+spirit->HitXOffset+spirit->HitWidth, spirit->Y+spirit->HitYOffset+spirit->HitHeight, 0011b))
+					{
+						spirit->Step = 0;
+					}
+				}
+			}
+		}
+		
 		do //This loops for as long as the header is paused
 		{
 			if(Global[GLOBAL_SUSPEND])
 			{
-				if(suspendcounter <= 0) //First frame of pause processing - remember movement and wherever the weapon was in a collision state first.
+				if(suspend[0] <= 0) //First frame of pause processing - remember movement, wherever weapon has collission or obeys engine gravity.
 				{
-					spirit->Misc[LWMISC_STEPMEM] = spirit->Step;
+					suspend[1] = spirit->Step;
+					suspend[2] = spirit->CollDetection;
+					suspend[3] = spirit->Gravity;
+				}
+				else
+				{
+					if(spirit->Step != 0)
+						ERROR("Spirit Suspend", "Attempted to set weapon step to a non-zero value while suspended");
 					if(spirit->CollDetection)
-						spirit->Misc[LWMISC_FLAGS_INT] |= LWFI_COLLISION;
+						ERROR("Spirit Suspend", "Attempted to set weapon collision detection ON while suspended");
+					if(spirit->Gravity)
+						ERROR("Spirit Suspend", "Attempted to set weapon gravity ON while suspended");
 				}
 				spirit->Step = 0;
 				spirit->CollDetection = false;
-				++suspendcounter;
+				spirit->Gravity = false;
+				++suspend[0];
 			}
 			Waitframe();
 		}
 		while(Global[GLOBAL_SUSPEND]);
+		
+		//Restore weapon's previous parameters following a pause
+		if(suspend[1] > 0)
+			spirit->Step = suspend[1];
+		if(suspend[2])
+			spirit->CollDetection = true;
+		if(suspend[3])
+			spirit->Gravity = true;
 		return true;
 	}
 
@@ -301,6 +335,32 @@ namespace Spirit
 	{
 		if(Spirit_IsSpiritLW(spirit))
 			spirit->Misc[LWMISC_FLAGS] |= LWF_ALIVE;
+	}
+	
+	//Launches the weapon into the air, taking into account how Step and Jump interact with the Y Axis in Sideview and when Fake Z is set. To instead simply adjust the weapon, pass the weapon's step speed and their jump into the latter two args.
+	//This only changes step and jump in Sideview screens. If you don't plan on using sideview screens in your quest or you may leave this out.
+	//Be sure to use WrapAngle() on the weapon's angle first!
+	void Spirit_AirAdjust(lweapon spirit, int step, float jump)
+	{
+		if(IsSideview())
+		{
+			--spirit->Y;
+			//Obtain the difference between angles
+			float difference = spirit->Angle >= RAD_DIR_LEFT ? Abs(spirit->Angle-PI*1.5) : Abs(spirit->Angle-PI/2);
+			printf("Weapon Angle: %f.\nDifference from vertical angle: %f.\n", spirit->Angle, difference);
+			
+			//Calculate the step speed and jump mods needed to make and apply them to step speed
+			spirit->Step = (step/(PI/2)*difference);
+			spirit->Jump = spirit->Angle > RAD_DIR_LEFT ? (step-(step/(PI/2)*difference))/100 : -1*(step-(step/(PI/2)*difference))/100;
+			printf("New Step: %i.\nNew Jump: %f.\n", spirit->Step, spirit->Jump);
+			
+			//Snap the spirit's angle to Left or Right depending on its angle
+			if(spirit->Angle > RAD_DIR_UP || spirit->Angle < RAD_DIR_DOWN) //spirit going right
+				spirit->Angle = RAD_DIR_RIGHT;
+			else if(spirit->Angle < RAD_DIR_UP || spirit->Angle > RAD_DIR_DOWN) //spirit going left
+				spirit->Angle = RAD_DIR_LEFT;
+			printf("New Angle: %f.\n", spirit->Angle);
+		}
 	}
 
 	//Returns true if the LWeapon passed is an LWeapon identified as a Spirit LWeapon by this header.
@@ -397,5 +457,135 @@ namespace Spirit
 	{
 		return FixedCollision(b, a);
 	}
-	//end FixedCollision
+	//end
+	//start
+	//Similar to Collision, but it precisely checks for collision with solid combos. This specificially checks the outer edges of the hitbox
+	//Args:
+	//x1 - first X coordinate of the hitbox. This should not be higher than x2
+	//y1 - first Y coordinate of the hitbox. This should not be higher than y2
+	//x2 - second X coordinate of the hitbox. This should not be lower than x1
+	//y2 - second Y coordinate of the hitbox. This should not be lower than y2
+	//skipsides - Select which sides of the hitbox you want to skip checking. Add up the following values together to produce the following results:
+	//	1 - Top
+	//	2 - Bottom
+	//	4 - Left
+	//	8 - Right
+	//	Each corner will still be checked unless both of its corresponding sides are skipped.
+	
+	bool SolidRectCollision(int x1, int y1, int x2, int y2, int skipsides)
+	{
+		bool solidcoll = false;
+		int curx = x1;
+		int cury = y1;
+		until(curx > x2 || cury > y2)
+		{
+			//printf("Check %i:\ncurx: %f\ncury: %f\n", counter, curx, cury);
+			//Skip the sides of the hitbox specified by skipsides
+			bool skip = false;
+			if(cury == y1)
+			{
+				//Check the corners
+				if(curx == x1)
+				{
+					if(skipsides&0101b)
+						skip = true;
+				}
+				else if(curx == x2)
+				{
+					if(skipsides&1001b)
+						skip = true;
+				}
+				//Now check the top
+				else
+				{
+					if(skipsides&0001b)
+						skip = true;
+				}
+			}
+			if(cury == y2)
+			{
+				//Check the corners
+				if(curx == x1)
+				{
+					if(skipsides&0110b)
+						skip = true;
+				}
+				else if(curx == x2)
+				{
+					if(skipsides&1010b)
+						skip = true;
+				}
+				//Now check the bottom
+				else
+				{
+					if(skipsides&0010b)
+						skip = true;
+				}
+			}
+			//Check the left
+			if(curx == x1)
+			{
+				if(skipsides&0100b)
+					skip = true;
+			}
+			//Check the right
+			if(curx == x2)
+			{
+				if(skipsides&1000b)
+					skip = true;
+			}
+			if(Screen->isSolid(curx, cury) && !skip)
+			{
+				solidcoll = true;
+				break;
+			}
+			else
+			{
+				//Move horizontally along the top and bottom edges of the box 
+				if(cury == y1 || cury == y2)
+				{
+					if(curx < x2)
+					{
+						//Move to the next column
+						curx = Min(curx+8, x2);
+					}
+					else
+					{
+						//Go down to the next row
+						if(cury < y2)
+						{
+							curx = x1;
+							cury = Min(cury+8, y2);
+						}
+						//Bottom right corner reached, finish looping.
+						else
+							break;
+					}
+				}
+				//Move down the rows
+				else
+				{
+					//Move to the right border
+					if(curx != x2)
+					{
+						curx = x2;
+					}
+					//Move down to the next row and to the left border
+					else
+					{
+						curx = x1;
+						cury = Min(cury+8, y2);
+					}
+				}
+			}
+		}
+		return solidcoll;
+	}
+	//end
+	//A fixed version of OnSidePlatform() in std.zh. It now checks for collisison on the upper bound of the box and allows you to adjust which points on the X axis it checks.
+	
+	bool SidePlatformCollision(int x, int y, int xOff, int yOff, int w1, int w2, int h1, int h2)
+	{
+		return ((Screen->isSolid((x+xOff)+w1,(y+yOff)+h1) || Screen->isSolid((x+xOff)+w2,(y+yOff)+h1) || Screen->isSolid((x+xOff)+w1,(y+yOff)+h2) || Screen->isSolid((x+xOff)+w2,(y+yOff)+h2)) && Screen->Flags[SF_ROOMTYPE]&4);
+	}
 }

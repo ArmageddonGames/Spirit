@@ -18,15 +18,6 @@ namespace Spirit
 {
 	CONFIG SPT_BLANK = 44; //Used for several functions like creating invisible "hitting" weapons. Set this the number of a blank sprite in the Sprite Editor. The blank sprite must use the top left tile of a 4x4 block of empty tiles.
 
-	//Small (1x1) shadow settings. Currently not operational and these are depreciated with the Script Setting "Weapons have Shadow"
-	//If SPIRITLW_SHADOW_TILE is 0, small shadows will be disabled
-	CONFIG SHADOW_TILE = 631;
-	CONFIG SHADOW_CSET = 8;
-	CONFIG SHADOW_FRAMES = 4;
-	CONFIG SHADOW_ANIM_SPEED = 8;
-	CONFIG SHADOW_TRANSLUCENT = 1; // 0 = No, 1 = Yes
-	CONFIG SHADOW_FLICKER = 0; // 0 = No, 1 = Yes
-
 	//Large (2x2) shadow settings
 	// If SPIRITLW_LARGE_SHADOW_TILE is 0, large shadows will be disabled
 	CONFIG LARGE_SHADOW_TILE = 631; // Top-left corner
@@ -52,10 +43,7 @@ namespace Spirit
 	//Weapon properties
 
 	//LWeapon Misc[] entries. Set so they don't conflict with existing scripts
-	CONFIG LWMISC_X_MOV            = 25; //How far the weapon has moved this frame before internal movement kicks in via scripted functions. Used by some movement types
-	CONFIG LWMISC_Y_MOV            = 26;
-	CONFIG LWMISC_STEPMEM          = 27; //Keeps the weapon's step in memory so pausing and suspending the header suspends weapons controlled by it
-	CONFIG LWMISC_COOLDOWN         = 28; //Keeps track of penetrating LWeapon cooldown.
+	CONFIG LWMISC_COOLDOWN         = 29; //Keeps track of penetrating LWeapon cooldown.
 	CONFIG LWMISC_FLAGS            = 30; //The weapon's spirited flags, so it can receive special spirited effects from the header.
 	CONFIG LWMISC_FLAGS_INT        = 31; //The weapon's internal spirited flags, which are set by the script. All Misc[] variables except this one can be used by non-spirited weapons.
 

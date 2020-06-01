@@ -1,6 +1,6 @@
 namespace Spirit
 {
-	itemdata script TestBounceLoader //This item creates a basic spirited LWeapon
+	itemdata script TestBounceItem //This item creates a basic spirited LWeapon
 	{
 		void run()
 		{
@@ -10,6 +10,34 @@ namespace Spirit
 							 this->WeaponInitD[4], this->WeaponInitD[5], this->WeaponInitD[6], this->WeaponInitD[7]},
 							 this->ID, Hero->X, Hero->Y, this->Power*2, this->Attributes[0], DirRad(Hero->Dir),
 							 this->Sprites[0], this->UseSound, 0);
+			spirit->Gravity = true;
+		}
+	}
+	itemdata script WaveBeam //This item replicates Wave Beam from the Metroid series. Shoots a ball of energy which moves in a sine wave pattern.
+	{
+		void run()
+		{
+			//Create the weapon and launch the script
+			lweapon spirit = Spirit_CreateWeapon(LW_SCRIPT1, this->WeaponScript,
+							 {this->WeaponInitD[0], this->WeaponInitD[1], this->WeaponInitD[2], this->WeaponInitD[3],
+							 this->WeaponInitD[4], this->WeaponInitD[5], this->WeaponInitD[6], this->WeaponInitD[7]},
+							 this->ID, Hero->X, Hero->Y, this->Power*2, this->Attributes[0], DirRad(Hero->Dir),
+							 this->Sprites[0], this->UseSound, 0);
+		}
+	}
+	itemdata script RandomShots
+	{
+		void run()
+		{
+			DEFINE SHOTS = 1;
+			int spiritD[8] = {this->WeaponInitD[0], this->WeaponInitD[1], this->WeaponInitD[2], this->WeaponInitD[3], this->WeaponInitD[4], this->WeaponInitD[5], this->WeaponInitD[6], this->WeaponInitD[7]};
+			repeat(SHOTS)
+			{
+				lweapon spirit = Spirit_CreateWeapon(LW_SCRIPT1, this->WeaponScript, spiritD, this->ID, Hero->X, Hero->Y, this->Power*2, this->Attributes[0], Randf(0, PI*2), this->Sprites[0], this->UseSound, 0);
+				spirit->Gravity = true;
+				Spirit_AirAdjust(spirit, spirit->Step, 3);
+				//Create the weapon and launch the script... 8 times
+			}
 		}
 	}
 	
@@ -48,16 +76,18 @@ namespace Spirit
 		}
 	}
 	
-	lweapon script TestSine
+	//Weapon moves in a sine wave like what Wave Beam does in Metroid
+	lweapon script WaveShot
 	{
 		void run(int amp, int initangle, int rot)
 		{
-			//Start of the script. Declare your working variables here as well as any counters you need to use.
-			float work[3];
+			untyped work[1];
 
 			while(Spirit_IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
 			{
 				Spirit_Move_Sine(this, work, amp, initangle, rot);
+				Trace(this->X);
+				Trace(this->Y);
 				
 				Spirit_Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
 			}
@@ -66,22 +96,36 @@ namespace Spirit
 		}
 	}
 	
-	lweapon script TestBounce
+	lweapon script TestBounceWeapon
 	{
 		void run()
 		{
 			//Start of the script. Declare your working variables here as well as any counters you need to use.
 			float work[4];
 			
-			this->Misc[LWMISC_FLAGS] |= LWF_OBEYGRAVITY;
 			while(Spirit_IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
 			{
 				Spirit_Move_Bounce(this, work, 3, 0.6, 30);
-				
+				Trace(this->Jump);
 				if(work[0] > 5)
 				{
 					Spirit_Kill(this);
 				}
+				Spirit_Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
+			}
+			//Weapon is dead. Run death effects here.
+			
+		}
+	}
+	
+	lweapon script Tornado
+	{
+		void run()
+		{
+			//Start of the script. Declare your working variables here as well as any counters you need to use.
+			
+			while(Spirit_IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
+			{
 				Spirit_Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
 			}
 			//Weapon is dead. Run death effects here.
