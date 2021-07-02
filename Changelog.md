@@ -1,6 +1,28 @@
 # SPIRIT WEAPON FOR ZELDA QUEST AETERNAL CHANGELOG
 
 
+### Alpha 4 Build 1. ZC Version: 2.55 Alpha 92+. July ??? 2021.
+ 
+- Removed `LWFI_AIRBORNE` and `LWFI_BOUNCY` out of redundancy. Replaced `LWFI_AIRBORNE` with `LWFI_STATUSEFFECT` (all spirit1_internal)
+- Changed the `LWF_*` (spirit1_common) to group the movement flags together and the piercing and unblockable flags together.
+- Added `CONFIG SETTING_ACCURATE_SOLIDITY` (spirit)
+- Set up definitions for six more namespaces: `Spirit::Move`, `Spirit::Animate`, `Spirit::Hit`, `Spirit::Death`, `Spirit::Status`, `Spirit::Misc`. These are currently not used.
+- Added `EffectiveX()` and `EffectiveY()` for spirit weapons.
+- Imported changes and additions from _Ryuu_ and _24th_ _Hour_ _Heroes_:
+- - Fixed the bug in `Spirit_CreateLWeapon()` (spirit1_common) where the SFX would not be played properly.
+- - Added `Spirit_Move_Increment()` (spirit1_common). This makes the weapon moves in increments as opposed to moving smoothly.
+- - Added `Spirit_CanMove()` (spirit1_common). Checks to see if the weapon can move onto a given pixel, similar to its NPC complement in `Ghost.zh`. Right now it just checks for combo solidity on weapons that obey combo solidity.
+- - Added `SolidCollision()` (spirit1_common). Checks the weapon's hitbox collision with solid combos.
+- - Added `SolidCollisionFull()` (spirit1_common). Checks the weapon's hitbox collision with fully solid combos.
+- - Overloaded `Spirit_CreateLWeapon()` (spirit1_common) to give it the ability to read from script name as opposed to script number.
+- - Overloaded `RunLWeaponScript()` (spirit1_common) to give it the ability to read from script name as opposed to script number.
+- - Added `CONFIG ENABLE_LOGGING` (spirit1_common). Enable the user to enable or disable the header's traces.
+- - Added `Spirit_Update_SetDirAngle()` (spirit1_common). Sets a weapon's direction based off its angle.
+- - Added `Spirit_Update_GetDirAngle()` (spirit1_common). Gets what a weapon's direction would become if the above function is called.
+- - Changed `Spirit_CreateLWeapon()` (spirit1_common) so the internal direction of the weapon is set based off its angle on creation.
+- - Removed `CONFIG LWF_NOFALL` (spirit1_common). With `lweapon->Gravity`, this is not needed.
+- - Changed `CONFIG LWF_JUMPPHYSICS` (spirit1_common) from `0x0010` to `0x0008`, taking `CONFIG LWF_NOFALL`'s old place
+
 ### Alpha 3 Build 1. ZC Version: 2.55 Alpha 67+. June 1st 2020. 
 
 - Implemented basic sideview physics; which run on weapons that obey gravity.

@@ -5,9 +5,9 @@
 
 **AUTHOR:** *Orithan Fox*
 
-**VERSION:** Alpha 3, Build 1
+**VERSION:** Alpha 4, Build 1
 
-**ZELDA QUEST VERSION:** *Zelda Quest AEternal* (v2.55) Alpha 66 and up
+**ZELDA QUEST VERSION:** *Zelda Quest AEternal* (v2.55) Alpha 92 and up
 
 
 ***WARNING! THIS IS IN ALPHA STATE. FEATURES MAY BE CHANGED OR REMOVED WITHOUT PRIOR WARNING. SOME FEATURES ARE INCOMPLETE OR NONFUNCTIONAL. YOU HAVE BEEN WARNED.***
@@ -18,7 +18,7 @@
 
 The header is planned to sport a number of special features which aid inexperienced scripters in the creation of custom weapons and items generated and used by the player. The header automatically handles many of the tedious tasks which must be done when handling weapons including updating stuff like collision data and pausing the weapons while the header is paused. Packaged with the header is a variety of commonly-used movement functions.
 
-Any functions, constants, etc whose names are marked with `__` at the start are reserved for internal use. They may change or be removed in future versions without warning.
+Any functions, constants, etc that are included in the namespace `Spirit::Internal` are reserved for internal use.
 
 It is also important that, if using this header and are using the Explode death type, that you turn off the quest rule `Scripted Bomb LWeapons Hurt Link` under `Quest->Rules->Items` due to a quirk in how blast damage from explosions generated via script is calculated. When you set the Damage of a Bomb Blast LWeapon generated via script; the bomb blast now hits the Player for *whole* hearts equal to the weapon's Damage (eg. You set a Bomb Blast's Damage to 8 via script. Instead of dealing 2 Hearts of damage like what most weapons do, it deals 8 Hearts of damage to the Player).
 Another setting you should check before setting up this header is `Sprite Coordinates are Float` in the `objects` tab under `ZScript->Quest Script Settings`.
@@ -31,7 +31,7 @@ There are planned to be many different movement types. Eventually, I may add ful
 
 The header planned to be include a buffer system. Using a large array, the end user can store the data for a number of weapons and then generate copies of them later when needed.
 
-On addition to the basic animation weapons have, it is planned for you to be able to define animation rules for a weapon when you call the SpiritLW_Animate() function using specially designed arrays.
+On addition to the basic animation weapons have, it is planned for you to be able to create animation rules for a weapon when you call the SpiritLW_Animate() function using specially designed arrays.
 The arrays should be formatted like this when called:
 `int AnimationArray[] = {tile1, tile2, tile3...};`
 They can also be defined in the function as array literals.
@@ -59,7 +59,7 @@ lweapon script ExampleWeapon{
 			/*
 			BODY
 			Run the stuff the weapon does during the time the script runs. This includes stuff that is run in loops, which you will always need when running a Spirit Weapon script.
-			The condition in the loop can be anything. You can make it so the loop ends after 120 frames. However, it is highly advisable that 
+			The condition in the loop can be anything. You can make it so the loop ends after 120 frames. However, it is highly advisable that the script checks for if the LWeapon is alive in any given loop.
 			*/
 		
 			/*

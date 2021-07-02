@@ -33,7 +33,7 @@ namespace Spirit
 			int spiritD[8] = {this->WeaponInitD[0], this->WeaponInitD[1], this->WeaponInitD[2], this->WeaponInitD[3], this->WeaponInitD[4], this->WeaponInitD[5], this->WeaponInitD[6], this->WeaponInitD[7]};
 			repeat(SHOTS)
 			{
-				lweapon spirit = Spirit_CreateWeapon(LW_SCRIPT1, this->WeaponScript, spiritD, this->ID, Hero->X, Hero->Y, this->Power*2, this->Attributes[0], Randf(0, PI*2), this->Sprites[0], this->UseSound, 0);
+				lweapon spirit = Spirit_CreateWeapon(LW_SCRIPT1, this->WeaponScript, spiritD, this->ID, Hero->X, Hero->Y, this->Power*2, this->Attributes[0], Randf(0, PI*2), this->Sprites[0], this->UseSound, LWF_JUMPPHYSICS|LWF_OBEYSOLID);
 				spirit->Gravity = true;
 				Spirit_AirAdjust(spirit, spirit->Step, 3);
 				//Create the weapon and launch the script... 8 times
@@ -82,12 +82,18 @@ namespace Spirit
 		void run(int amp, int initangle, int rot)
 		{
 			untyped work[1];
+			this->Extend = 3;
+			this->TileWidth = 4;
+			this->TileHeight = 4;
+			this->HitWidth = 64;
+			this->HitHeight = 64;
 
 			while(Spirit_IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
 			{
 				Spirit_Move_Sine(this, work, amp, initangle, rot);
-				Trace(this->X);
-				Trace(this->Y);
+				SolidRectCollision(this->X, this->Y, this->X+this->HitWidth, this->Y+this->HitHeight);
+				//Trace(this->X);
+				//Trace(this->Y);
 				
 				Spirit_Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
 			}
@@ -106,7 +112,7 @@ namespace Spirit
 			while(Spirit_IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
 			{
 				Spirit_Move_Bounce(this, work, 3, 0.6, 30);
-				Trace(this->Jump);
+				//Trace(this->Jump);
 				if(work[0] > 5)
 				{
 					Spirit_Kill(this);
@@ -129,7 +135,7 @@ namespace Spirit
 				Spirit_Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
 			}
 			//Weapon is dead. Run death effects here.
-			
+			Remove(this);
 		}
 	}
 

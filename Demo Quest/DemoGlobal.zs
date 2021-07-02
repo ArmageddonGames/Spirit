@@ -1,6 +1,6 @@
 #option HEADER_GUARD on
 #include "std.zh"
-#include "SpiritWeapon.zh"
+#include "Spirit_zh/SpiritWeapon.zh"
 
 global script Active{
 	void run(){

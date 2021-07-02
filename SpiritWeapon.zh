@@ -6,9 +6,9 @@
 #option HEADER_GUARD on
 #include "std.zh" //Required for header
 //Required header subfiles
-#include "spirit_zh/spirit1_common.zh"
-#include "spirit_zh/spirit1_scripts.zh"
-#include "spirit_zh/spirit1_internal.zh"
+#include "Spirit_zh/spirit_zh/spirit1_common.zh"
+#include "Spirit_zh/spirit_zh/spirit1_scripts.zh"
+#include "Spirit_zh/spirit_zh/spirit1_internal.zh"
 
 typedef const int DEFINE; //Don't change DEFINE constants!
 typedef const int CONFIG;
@@ -32,7 +32,19 @@ namespace Spirit
 	CONFIG BUFFER_SIZE = 16; //The number of LWeapons that can be stored in the GhostWeaponBuffer
 
 	//Settings
-	CONFIGB SETTING_FAKE_Z = false; //If enabled, spirited weapons never travel on the Z axis. When they would travel on the Z axis in non-sideview screens, the height effect is faked by instead manipulating their Y value.
+	
+	enum LogSettings
+	{
+		LOGGING_NONE,
+		LOGGING_ERROR,
+		LOGGING_FULL
+	};
+	CONFIG ENABLE_LOGGING = LOGGING_FULL; //Wherever the header will log messages to the console or enable debug stuff.
+		//0 - No logging.
+		//1 - Log on error. 
+		//2 - Full logging. This will slow your game right down, so only use it when debugging
+	CONFIGB SETTING_FAKE_Z = false; //If enabled, movement functions do not modify the weapon's Z position and instead adjust its Y position. This does not affect how the weapon's Z position is manipulated by the engine and you must set this up in your own movement functions in order to for them use it.
+	CONFIG SETTING_ACCURATE_SOLIDITY = 0; //If enabled the header's solidity checks will use a (generally) slower, more accurate solidity checking function if the weapon's collision rectangle is this size, in pixels, on either the x or y axis. Set this to 0 to enable this for weapons of all sizes, set this to a higher number than any size weapon you plan to use in order to disable (eg. 256).
 	CONFIGB SETTING_BOMB_SELFHURT = true; //If enabled, bombs placed with this header can hurt Hero
 	
 	CONFIG HIT_MAXCOOLDOWN = 4; //Maximum Time, in frames, spirited LWeapons can not hit again after hitting a target once. This is done to reduce the amount of blocking noises that get produced.
@@ -55,7 +67,21 @@ namespace Spirit
 	//End of Settings
 	*/
 	
-	//Set up internal namespace in main file
+	//Set up namespaces in main file
+	namespace Update{}
+	using namespace Spirit::Update;
+	namespace Animate{}
+	using namespace Spirit::Animate;
+	namespace Move{}
+	using namespace Spirit::Move;
+	namespace Hit{}
+	using namespace Spirit::Hit;
+	namespace Death{}
+	using namespace Spirit::Death;
+	namespace Status{}
+	using namespace Spirit::Status;
+	namespace Misc{}
+	using namespace Spirit::Misc;
 	namespace Internal{}
 	using namespace Spirit::Internal;
 }

@@ -6,24 +6,22 @@ namespace Spirit
 		GLOBAL_SUSPEND, //The index for wherever the header is suspended or not. While suspended, Spirit_Waitframe does not return; keeping the weapons motionless. Global[GLOBAL_SUSPEND] <= 0, not suspended. Global[GLOBAL_SUSPEND] > 0, suspended.
 		GLOBAL_SZ
 	};
-
 	DEFINE HITWEAPON_DUR = 1; //How long hitting LWeapons persist.
 
 
 	//LWeapon flags. OR (|) them together when setting spirit->Misc[LWMISC_FLAGS]
 	//None of these except LWF_PIERCING and LWF_ALIVE are functional
-	DEFINE LWF_OBEYSOLID     = 0x0001; //Weapon respects combo solidity. The status of this flag is overridden by LWM_WALLBOUNCE. This however, does not stop it from getting blocked by combos which block it.
-	DEFINE LWF_PIERCING      = 0x0002; //Weapon does not die or vanish after hitting an enemy
-	DEFINE LWF_UNBLOCKABLE   = 0x0004; //Weapon can not be blocked by shields.
-	DEFINE LWF_NOFALL        = 0x0008; //Weapon obeys height physics when weapon->Jump is set. This will reduce the weapon's step speed as it travels through the air.
-	DEFINE LWF_JUMPPHYSICS   = 0x0010; //Weapon obeys height physics when weapon->Jump is set. This will reduce the weapon's step speed as it travels through the air.
-	DEFINE LWF_DUMMY         = 0x0100; //Weapon does not move or hit enemies and can be controlled for other purposes.
+	DEFINE LWF_PIERCING      = 0x0001; //Weapon does not die or vanish after hitting an enemy
+	DEFINE LWF_UNBLOCKABLE   = 0x0002; //Weapon can not be blocked by shields.
+	DEFINE LWF_OBEYSOLID     = 0x0004; //Weapon respects combo solidity.
+	DEFINE LWF_JUMPPHYSICS   = 0x0008; //Weapon obeys height physics when weapon->Jump is set. This will reduce the weapon's step speed as it travels through the air.
+	DEFINE LWF_DUMMY         = 0x0100; //Weapon does not move or hit enemies and can be controlled for other purposes. They recieve only basic updates in the waitframe.
 	//Flags which are set internally, but the user can read/write freely if they want to
 	DEFINE LWF_ALIVE         = 0x1000; //Weapon is alive. This is set internally
 	
-	DEFINE MAX_WORKSIZE = 3; //The largest size your 'work[]' array ever needs to be. This may get larger, so, use the constant, not the value!
+	DEFINE MAX_WORKSIZE = 8; //The largest size your 'work[]' array ever needs to be. This may get larger, so, use the constant, not the value!
 
-	//Creates a basic spirited LWeapon with all the basic attributes and returns the pointer.
+	//Creates a basic spirited LWeapon with all the basic attributes and returns the pointer. This also internally sets their direction based off the angle passed
 	lweapon Spirit_CreateWeapon(int type, int wscrpt, int weaponD, int parent, int x, int y, int damage, int step, int angle, int sprite, int sfx, int flags)
 	{
 		lweapon spirit = RunLWeaponScript(type, wscrpt, weaponD);
@@ -39,6 +37,37 @@ namespace Spirit
 			spirit->Parent = parent;
 			spirit->Misc[LWMISC_FLAGS] = (flags | LWF_ALIVE);
 			spirit->Misc[LWMISC_FLAGS_INT] = LWFI_ISSPIRIT;
+			Spirit_Update_SetDirAngle(spirit, true);
+			if(sfx > 0)
+				Game->PlaySound(sfx);
+			
+			return spirit;
+		}
+		else //This probably shouldn't happen, but for good measure...
+		{
+			ERROR("Spirit_CreateWeapon", "Failed to create lweapon");
+			return NULL;
+		}
+	}
+	//Overloaded to have it load via script name instead. Will optimize later.
+	lweapon Spirit_CreateWeapon(int type, char32 name, int weaponD, int parent, int x, int y, int damage, int step, int angle, int sprite, int sfx, int flags)
+	{
+		lweapon spirit = RunLWeaponScript(type, name, weaponD);
+		if(spirit->isValid())
+		{
+			spirit->X = x;
+			spirit->Y = y;
+			spirit->Damage = damage;
+			spirit->Step = step;
+			spirit->Angular = true;
+			spirit->Angle = angle;
+			spirit->UseSprite(sprite);
+			spirit->Parent = parent;
+			spirit->Misc[LWMISC_FLAGS] = (flags | LWF_ALIVE);
+			spirit->Misc[LWMISC_FLAGS_INT] = LWFI_ISSPIRIT;
+			Spirit_Update_SetDirAngle(spirit, true);
+			if(sfx > 0)
+				Game->PlaySound(sfx);
 			
 			return spirit;
 		}
@@ -65,6 +94,27 @@ namespace Spirit
 		}
 		return weap;
 	}
+
+	//Runs an LWeapon script, using the script name instead of ID
+	lweapon RunLWeaponScript(int ID, char32 name, untyped args)
+	{
+		lweapon weap = Screen->CreateLWeapon(ID);
+		weap->Script = Game->GetLWeaponScript(name);
+		if(weap->Script > 0) //Script assigned, assign D args
+		{
+			for(int q = Min(SizeOfArray(args)-1,7); q >= 0; --q)
+			{
+				weap->InitD[q] = args[q];
+			}
+		}
+		//No such script found, null
+		else
+		{
+			return NULL;
+		}
+		return weap;
+	}
+	
 	//Supply a float array of size 1 or higher to use. Otherwise it does nothing.
 	//Args:
 	//	acc - Step Speed at which the weapon accelerates in. 100 = 1 pixel per frame (you probably don't want it this high unless you know what you are doing)
@@ -134,6 +184,59 @@ namespace Spirit
 			ERROR("Spirit_Move_Sine", SizeOfArray(work) < WORKSIZE ? "Bad Array Size" : "Not a Spirit Weapon");
 		}
 	}
+	
+	//Weapon moves in pixel increments as opposed to moving normally. Currently only supports circular movement.
+	//This nulls the weapon's normal step speed. Be careful when setting step speed with this function because it will take on any new step speed that's assigned to it.
+	//Supply a float array of size 4 or higher to use. Otherwise, it does nothing.
+	//Args:
+	//	increment - The distance at which the weapon jumps positions.
+	//Work indicies:
+	//	0 - Stored Step Speed.
+	//	1 - Stored X movement.
+	//	2 - Stored Y movement.
+	//	3 - Raw distance moved.
+	void Spirit_Move_Increment(lweapon spirit, untyped work, float increment)
+	{
+		DEFINE WORKSIZE = 4;
+		CONST_ASSERT(WORKSIZE <= MAX_WORKSIZE, "MAX_WORKSIZE too small!");
+		if(SizeOfArray(work) >= WORKSIZE && Spirit_IsSpiritLW(spirit) && increment > 0)
+		{
+			//Null native step speed.
+			if(spirit->Step > 0)
+			{
+				work[0] = spirit->Step;
+				spirit->Step = 0;
+			}
+			//Increment stored movement
+			work[1] = spirit->X+VectorX(work[0]/100*work[3], RadtoDeg(spirit->Angle));
+			work[2] = spirit->Y+VectorY(work[0]/100*work[3], RadtoDeg(spirit->Angle));
+			//Update postion once the increment is reached until there is no more valid increments this frame.
+			int breakout = 0; //DEBUG breakout counter. Stops the game from hanging.
+			while(work[3] >= increment)
+			{
+				//Deduct from stored movement
+				work[1] = spirit->X;
+				work[2] = spirit->Y;
+				//Move weapon
+				spirit->X += VectorX(increment, RadtoDeg(spirit->Angle));
+				spirit->Y += VectorY(increment, RadtoDeg(spirit->Angle));
+				work[3] -= increment;
+				
+				if(breakout >= 100)
+				{
+					ERROR("Logical", "Spirit_Move_Increment", "Failed to update movement successfully.");
+					break;
+				}
+				breakout ++;
+			}
+			//Add the actual distance travelled
+			work[3] += work[0]/100;
+		}
+		else
+		{
+			ERROR("Spirit_Move_Increment", SizeOfArray(work) < WORKSIZE ? "Bad Array Size" : (increment <= 0 ? "Increment must be a non-zero positive number" : "Not a Spirit Weapon"));
+		}
+	}
 
 	//----------------
 	//|||INCOMPLETE|||
@@ -153,6 +256,7 @@ namespace Spirit
 	{
 		DEFINE WORKSIZE = 3;
 		CONST_ASSERT(WORKSIZE <= MAX_WORKSIZE, "MAX_WORKSIZE too small!");
+		bool fakez = false;
 		if(SizeOfArray(work) >= WORKSIZE && Spirit_IsSpiritLW(spirit)) //Z axis setting is not set to fake.
 		{
 			if(work[1] <= 0)
@@ -164,7 +268,7 @@ namespace Spirit
 			{
 				unless(IsSideview()) //Handling for top down
 				{
-					unless(SETTING_FAKE_Z)
+					unless(fakez)
 					{
 						//spirit->Z = Max(spirit->Z+work[0], 0);
 						//work[0] = Max(Game->Gravity[GR_TERMINALV]*-1, work[0]-Game->Gravity[GR_STRENGTH]);
@@ -196,7 +300,6 @@ namespace Spirit
 	//----------------
 	//|||INCOMPLETE|||
 	//----------------
-
 	//Weapon moves in an orbit
 	void Spirit_Move_Orbit(lweapon spirit, untyped work, int orbit, int increment)
 	{
@@ -213,6 +316,8 @@ namespace Spirit
 	}
 
 	//Handles internal stuff for spirited weapons.
+	//bool remove - If true the weapon is removed on death.
+		//NOTE: If the weapon is killed in the waitframe and this is set to true; it is allowed to run for 1 additional frame before it gets removed. It can be revived or be read for death effects during this time
 	bool Spirit_Waitframe(lweapon spirit)
 	{
 		DEFINE SUSPENDSIZE = 4;
@@ -223,30 +328,37 @@ namespace Spirit
 		2 - Stored Collision Detection (bool)
 		3 - Stored Gravity Obedience (bool)*/
 		
+		//Automatically set direction based on angle
+		
 		//Piercing weapons stay alive after hitting enemies
+		
+		//If it is flagged to be removed on death, remove during the waitframe.
+
 		if(spirit->Misc[LWMISC_FLAGS]&LWF_PIERCING)
 			spirit->DeadState = WDS_ALIVE;
-		
 		//Code for handling weapons with gravity
 		if(spirit->Gravity)
 		{
-			//Code for handling weapons that obey gravity in Sideview.
-			if(IsSideview())
+			//Code for handling weapons that obey gravity and solidity in Sideview.
+			if(IsSideview()) // && spirit->Misc[LWMISC_FLAGS]&LWF_OBEYSOLID
 			{
 				//Cut the weapon's jump if it collides with the ceiling of a combo.
-				if(spirit->Jump > 0)
+				if((spirit->Misc[LWMISC_FLAGS]&LWF_JUMPPHYSICS) && spirit->Jump > 0 && SolidRectCollision(EffectiveX(spirit, true), EffectiveY(spirit, true)-spirit->Jump, EffectiveX(spirit, true)+spirit->HitWidth, EffectiveY(spirit, true)-spirit->Jump))
 				{
-					if(SolidRectCollision(spirit->X+spirit->HitXOffset, spirit->Y+spirit->HitYOffset, spirit->X+spirit->HitXOffset+spirit->HitWidth, spirit->Y+spirit->HitYOffset+spirit->HitHeight, 1110b))
+					spirit->Y = (Div(spirit->Y+spirit->HitYOffset, 8)+1)*8;
+					spirit->Jump = 0;
+				}
+				//Kill the weapon if it collides with the sides of a solid combo.
+				if(spirit->Misc[LWMISC_FLAGS]&LWF_OBEYSOLID)
+				{
+					if(spirit->Jump < 0 && SolidRectCollision(EffectiveX(spirit, true), EffectiveY(spirit, true)+spirit->HitHeight+spirit->Jump*-1, EffectiveX(spirit, true)+spirit->HitWidth, EffectiveY(spirit, true)+spirit->HitHeight+spirit->Jump*-1)) //Weapon cannot move to where it is to go next frame.
 					{
+						spirit->Y = Div(spirit->Y+spirit->HitYOffset+spirit->Jump*-1, 8)*8; //Snap the weapon right above the combo.
 						spirit->Jump = 0;
 					}
-				}
-				if(spirit->Step > 0)
-				{
-					//Halt the weapon if it collides with the sides of a solid combo.
-					if(SolidRectCollision(spirit->X+spirit->HitXOffset, spirit->Y+spirit->HitYOffset, spirit->X+spirit->HitXOffset+spirit->HitWidth, spirit->Y+spirit->HitYOffset+spirit->HitHeight, 0011b))
+					if(SolidRectCollision(EffectiveX(spirit, true), EffectiveY(spirit, true), EffectiveX(spirit, true), EffectiveY(spirit, true)+spirit->HitHeight) || SolidRectCollision(EffectiveX(spirit, true)+spirit->HitWidth, EffectiveY(spirit, true), EffectiveX(spirit, true)+spirit->HitWidth, EffectiveY(spirit, true)+spirit->HitHeight))
 					{
-						spirit->Step = 0;
+						Spirit_Kill(spirit);
 					}
 				}
 			}
@@ -290,6 +402,39 @@ namespace Spirit
 		return true;
 	}
 
+	
+	//Updates a weapon's direction based off a radian angle.
+	//Non-spirit weapons can use this but the blockability needs to be maintained yourself.
+	void Spirit_Update_SetDirAngle(lweapon spirit, int angle, bool orthognal)
+	{
+		angle = WrapAngle(angle);
+		if(Spirit_IsSpiritLW(spirit))
+			spirit->Dir = Internal::SetBlockability(orthognal ? RadianAngleDir8(angle) : RadianAngleDir4(angle), (spirit->Misc[LWMISC_FLAGS]&LWF_UNBLOCKABLE) ? 1 : 0);
+		else
+			spirit->Dir = Internal::SetBlockability(orthognal ? RadianAngleDir8(angle) : RadianAngleDir4(angle), (spirit->Dir&8) ? 1 : 0);
+	}	
+	//Overloaded to have it set its direction based off its internal angle.
+	void Spirit_Update_SetDirAngle(lweapon spirit, bool orthognal)
+	{
+		Spirit_Update_SetDirAngle(spirit, spirit->Angle, orthognal);
+	}	
+	
+	//Gets the direction the weapon would be if it calls the above functions this frame.
+	//Non-spirit weapons can use this but the blockability needs to be maintained yourself.
+	int Spirit_Update_GetDirAngle(lweapon spirit, int angle, bool orthognal)
+	{
+		angle = WrapAngle(angle);
+		if(Spirit_IsSpiritLW(spirit))
+			return Internal::SetBlockability(orthognal ? RadianAngleDir8(angle) : RadianAngleDir4(angle), (spirit->Misc[LWMISC_FLAGS]&LWF_UNBLOCKABLE) ? 1 : 0);
+		else
+			return Internal::SetBlockability(orthognal ? RadianAngleDir8(angle) : RadianAngleDir4(angle), (spirit->Dir&8) ? 1 : 0);
+	}	
+	//Overloaded to have it set its direction based off its internal angle.
+	int Spirit_Update_GetDirAngle(lweapon spirit, bool orthognal)
+	{
+		return Spirit_Update_GetDirAngle(spirit, spirit->Angle, orthognal);
+	}
+	
 	//Suspends all header activity
 	void Spirit_Suspend()
 	{
@@ -347,19 +492,16 @@ namespace Spirit
 			--spirit->Y;
 			//Obtain the difference between angles
 			float difference = spirit->Angle >= RAD_DIR_LEFT ? Abs(spirit->Angle-PI*1.5) : Abs(spirit->Angle-PI/2);
-			printf("Weapon Angle: %f.\nDifference from vertical angle: %f.\n", spirit->Angle, difference);
 			
 			//Calculate the step speed and jump mods needed to make and apply them to step speed
 			spirit->Step = (step/(PI/2)*difference);
 			spirit->Jump = spirit->Angle > RAD_DIR_LEFT ? (step-(step/(PI/2)*difference))/100 : -1*(step-(step/(PI/2)*difference))/100;
-			printf("New Step: %i.\nNew Jump: %f.\n", spirit->Step, spirit->Jump);
 			
 			//Snap the spirit's angle to Left or Right depending on its angle
 			if(spirit->Angle > RAD_DIR_UP || spirit->Angle < RAD_DIR_DOWN) //spirit going right
 				spirit->Angle = RAD_DIR_RIGHT;
 			else if(spirit->Angle < RAD_DIR_UP || spirit->Angle > RAD_DIR_DOWN) //spirit going left
 				spirit->Angle = RAD_DIR_LEFT;
-			printf("New Angle: %f.\n", spirit->Angle);
 		}
 	}
 
@@ -368,17 +510,36 @@ namespace Spirit
 	{
 		return (spirit->Misc[LWMISC_FLAGS_INT]&LWFI_ISSPIRIT);
 	}
-
-	//Ends scripted control over a weapon as opposed to simply killing or removing it.
-	void Spirit_EndControl(lweapon spirit)
+	
+	//start SolidCollision
+	//Check for collision with solidity using a fixed four points on the hitbox. This is included here because it is not included in std.zh yet.
+	bool SolidCollision(int x1, int y1, int x2, int y2)
 	{
-		if(Spirit_IsSpiritLW(spirit))
-		{
-			spirit->Misc[LWMISC_FLAGS_INT] &= ~LWFI_ISSPIRIT;
-			spirit->CollDetection = true;
-			spirit->Script = 0;
-		}
+		return (Screen->isSolid(x1, y1) || Screen->isSolid(x2, y1) || Screen->isSolid(x1, y2) || Screen->isSolid(x2, y2));
 	}
+	//end
+	
+	
+	//start SolidCollisionFull
+	//Checks all four corners of a given hitbox for fully solid combos.
+	bool SolidCollisionFull(int x1, int y1, int x2, int y2)
+	{
+		//Stores the coordinates the loop checks
+		int coords[8] = {x1, y1,   x2, y1,   x1, y2,   x2, y2};
+		//Get the location of the combo to check, then snap x, y to its top left corner
+		int cmb = 0;
+		int lastcmb = 0; //Here solely to optimize this function by reducing the chance for it to read the same combo twice
+		//Check all four corners of the hitbox for full solidity
+		for(int cds = 0; cds < 4; cds ++)
+		{
+			cmb = ComboAt(coords[cds*2], coords[cds*2+1]);
+			if(cmb != lastcmb && ComboFullSolid(cmb)) //Why did this compile?
+				return true;
+			lastcmb = cmb;
+		}
+		return false;
+	}
+	//end
 
 	//Almost identical to the Collision function from std.zh, but slight adjustments are made to make it more accurate.
 	//This function does the same thing as the Fixed Collision functions, but they are currently not included in std.zh.
@@ -457,129 +618,100 @@ namespace Spirit
 	{
 		return FixedCollision(b, a);
 	}
+	
+	//Determines if a Spirit Weapon can move from its current position with its an angle. Is used internally if LWF_OBEYSOLID is set.
+	//spirit - Weapon to be passed through
+	//angle - The angle at which the weapon is to move at.
+	//step - the step speed of its next move, in 100ths of a pixel per frame.
+	//imprecision (array) - How much of the weapon's hitbox is shaved off for the purpose of this function from all sides. The array is formatted like this: {top, bottom, left, right}. You can set negative values if you would like the weapon's hitbox to instead be extended. If its not an array or the array is of an incorrect size its simply treated as 0 for all sides.
+	//full - Whever it can only be stopped by fully solid combos or not if LWF_OBEYSOLID is set
+	bool Spirit_CanMove(lweapon spirit, int angle, int step, int imprecision, bool full)
+	{
+		bool skipimprecision = false;
+		if(!IsValidArray(imprecision) || SizeOfArray(imprecision) != 4)
+			skipimprecision = true;
+		//Sanity checking for hitbox resizing. If, due to the resizing, there would be no hitbox assume it can always move.
+		if(!skipimprecision && (imprecision[0]+imprecision[1] >= spirit->HitHeight || imprecision[2]+imprecision[3] >= spirit->HitWidth))
+			return true;
+		//Solidity
+		if(spirit->Misc[LWMISC_FLAGS]&LWF_OBEYSOLID)
+		{
+			int x1 = spirit->X+spirit->HitXOffset+VectorX(step/100, angle)+(skipimprecision ? 0 : imprecision[2]);
+			int x2 = spirit->X+spirit->HitXOffset+spirit->HitWidth+VectorX(step/100, angle)-(skipimprecision ? 0 : imprecision[3]);
+			int y1 = spirit->Y+spirit->HitYOffset+VectorY(step/100, angle)+(skipimprecision ? 0 : imprecision[0]);
+			int y2 = spirit->Y+spirit->HitYOffset+spirit->HitHeight+VectorY(step/100, angle)-(skipimprecision ? 0 : imprecision[1]);
+			if(SolidCollision(x1, y1, x2, y2))
+			{
+				if(!full || SolidCollisionFull(x1, y1, x2, y2))
+					return false;
+			}
+		}
+		return true;
+	}
 	//end
 	//start
-	//Similar to Collision, but it precisely checks for collision with solid combos. This specificially checks the outer edges of the hitbox
+	//Similar to Collision, but it precisely checks for collision with solid combos and returns which side(s) have collided in the form of a flagset. This specificially checks the outer edges of the hitbox.
+	//To access this flagset using the traditional DIR_* constants, use (SolidRectCollisionSides(x1, y1, x2, y2)&Pow(2, DIR_*))
 	//Args:
 	//x1 - first X coordinate of the hitbox. This should not be higher than x2
 	//y1 - first Y coordinate of the hitbox. This should not be higher than y2
 	//x2 - second X coordinate of the hitbox. This should not be lower than x1
 	//y2 - second Y coordinate of the hitbox. This should not be lower than y2
-	//skipsides - Select which sides of the hitbox you want to skip checking. Add up the following values together to produce the following results:
-	//	1 - Top
-	//	2 - Bottom
-	//	4 - Left
-	//	8 - Right
-	//	Each corner will still be checked unless both of its corresponding sides are skipped.
+	//Use this primarily for large LWeapons or ones that are not compilant with regular solidity functions. Calling this function with big weapons too many times at once can impact the framerate of your quest!
 	
-	bool SolidRectCollision(int x1, int y1, int x2, int y2, int skipsides)
+	int SolidRectCollisionSides(int x1, int y1, int x2, int y2)
 	{
-		bool solidcoll = false;
 		int curx = x1;
 		int cury = y1;
-		until(curx > x2 || cury > y2)
+		int collision = 0;
+		
+		int counter = 0; //Ensures the loop breaks out if too many checks were run.
+		//The points on the box are checked in a clockwise fashion: x1,y1 -> x2,y1 -> x2,y2 -> x1,y2 -> to start.
+		do
 		{
-			//printf("Check %i:\ncurx: %f\ncury: %f\n", counter, curx, cury);
-			//Skip the sides of the hitbox specified by skipsides
-			bool skip = false;
-			if(cury == y1)
+			if(Screen->isSolid(curx, cury))
 			{
-				//Check the corners
-				if(curx == x1)
-				{
-					if(skipsides&0101b)
-						skip = true;
-				}
-				else if(curx == x2)
-				{
-					if(skipsides&1001b)
-						skip = true;
-				}
-				//Now check the top
-				else
-				{
-					if(skipsides&0001b)
-						skip = true;
-				}
+				if(cury == y1 && !(collision&0001b)) //Top side
+					collision |= 0001b;
+				if(curx == x2 && !(collision&1000b)) //Right side
+					collision |= 1000b;
+				if(cury == y2 && !(collision&0010b)) //Bottom side
+					collision |= 0010b;
+				if(curx == x1 && !(collision&0100b)) //Left side
+					collision |= 0100b;
 			}
-			if(cury == y2)
-			{
-				//Check the corners
-				if(curx == x1)
-				{
-					if(skipsides&0110b)
-						skip = true;
-				}
-				else if(curx == x2)
-				{
-					if(skipsides&1010b)
-						skip = true;
-				}
-				//Now check the bottom
-				else
-				{
-					if(skipsides&0010b)
-						skip = true;
-				}
-			}
-			//Check the left
-			if(curx == x1)
-			{
-				if(skipsides&0100b)
-					skip = true;
-			}
-			//Check the right
-			if(curx == x2)
-			{
-				if(skipsides&1000b)
-					skip = true;
-			}
-			if(Screen->isSolid(curx, cury) && !skip)
-			{
-				solidcoll = true;
+			if(ENABLE_LOGGING >= LOGGING_FULL)
+				Screen->PutPixel(6, curx, cury, 0x75, 0, 0, 0, OP_OPAQUE);
+			if((x1 == x2 && cury == y2) || (y1 == y2 && curx == x2)) //Single-dimension, break early once the line is done.
 				break;
-			}
-			else
-			{
-				//Move horizontally along the top and bottom edges of the box 
-				if(cury == y1 || cury == y2)
-				{
-					if(curx < x2)
-					{
-						//Move to the next column
-						curx = Min(curx+8, x2);
-					}
-					else
-					{
-						//Go down to the next row
-						if(cury < y2)
-						{
-							curx = x1;
-							cury = Min(cury+8, y2);
-						}
-						//Bottom right corner reached, finish looping.
-						else
-							break;
-					}
-				}
-				//Move down the rows
-				else
-				{
-					//Move to the right border
-					if(curx != x2)
-					{
-						curx = x2;
-					}
-					//Move down to the next row and to the left border
-					else
-					{
-						curx = x1;
-						cury = Min(cury+8, y2);
-					}
-				}
-			}
-		}
-		return solidcoll;
+			if(curx < x2 && cury == y1) //Top side
+				curx = Min(curx+8, x2);
+			else if(curx == x2 && cury < y2) //Right side
+				cury = Min(cury+8, y2);
+			else if(curx > x1 && cury == y2) //Bottom side
+				curx = Max(curx-8, x1);
+			else if(curx == x1 && cury > y1) //Left side
+				cury = Max(cury-8, y1);
+			counter ++;
+		}until((curx == x1 && cury == y1) || counter >= 100)
+		return collision;
+	}
+	
+	//Returns true if any sides have collision.
+	bool SolidRectCollision(int x1, int y1, int x2, int y2)
+	{
+		return SolidRectCollisionSides(x1, y1, x2, y2) > 0;
+	}
+	
+	//Gets the effective X position of a given weapon
+	//Set hit to true to check for hit offset, false for draw offset. This is subject to being removed if a function that does the same job as this is included in std.zh.
+	int EffectiveX(lweapon wpn, bool hit)
+	{
+		return wpn->X+(hit ? wpn->HitXOffset : wpn->DrawXOffset);
+	}
+	int EffectiveY(lweapon wpn, bool hit)
+	{
+		return wpn->Y+(hit ? wpn->HitYOffset : wpn->DrawYOffset);
 	}
 	//end
 	//A fixed version of OnSidePlatform() in std.zh. It now checks for collisison on the upper bound of the box and allows you to adjust which points on the X axis it checks.

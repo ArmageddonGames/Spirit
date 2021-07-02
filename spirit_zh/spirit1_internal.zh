@@ -3,22 +3,128 @@ namespace Spirit
 {
 	namespace Internal
 	{
+		//Constants for the unblockable directions.
+		enum
+		{
+			DIR_UP_NOBLOCK = 8,
+			DIR_UPRIGHT_NOBLOCK,
+			DIR_RIGHTUP_NOBLOCK = 9,
+			DIR_RIGHT_NOBLOCK,
+			DIR_DOWNRIGHT_NOBLOCK,
+			DIR_RIGHTDOWN_NOBLOCK = 11,
+			DIR_DOWN_NOBLOCK,
+			DIR_DOWNLEFT_NOBLOCK,
+			DIR_LEFTDOWN_NOBLOCK = 13,
+			DIR_LEFT_NOBLOCK,
+			DIR_UPLEFT_NOBLOCK,
+			DIR_LEFTUP_NOBLOCK = 15
+		};
 		//Internal LWeapon flags. These may change or be removed with no warning.
-		DEFINE LWFI_ISSPIRIT   = 0x0001; //Denotes that this is controlled by spirit.zh. Use a specialized function to unset this flag in the case you want to terminate scripted control.
-		DEFINE LWFI_AIRBORNE   = 0x0002; //Weapon has been airborne (SpiritLW_Z >= 8 or SpiritLW_Jump >= 2) at least once
-		DEFINE LWFI_BOUNCY	   = 0x0004; //Weapon is using the bounce movement type.
+		DEFINE LWFI_ISSPIRIT		= 0x0001; //Denotes that this is controlled by spirit.zh. Use a specialized function to unset this flag in the case you want to terminate scripted control.
+		DEFINE LWFI_STATUSEFFECT	= 0x0002; //Weapon is the vehicle of an enemy status effect.
+		
+		//Checks all four corners of the combo cmb
+		bool ComboFullSolid(int cmb)
+		{
+			//Get the location of the combo to check, then snap x, y to its top left corner
+			int x = ComboX(cmb); int y = ComboY(cmb);
+			//Check all four corners of the combo for solidity
+			if(Screen->isSolid(x, y) && Screen->isSolid(x+8, y) && Screen->isSolid(x, y+8) && Screen->isSolid(x+8, y+8))
+				return true;
+			return false;
+		}
+		
+		//Ensure that the weapon's dir is read as one of the 8 orthognal directions.
+		//This really should not be like this and shame goes to whoever thought it would be a good idea to make the unblockable directions run off a different formula to the regular directions
+		int NormalizeDir(int dir)
+		{
+			switch(dir)
+			{
+				case DIR_UP...DIR_DOWNRIGHT:
+					return dir;
+				case DIR_UP_NOBLOCK:
+					return DIR_UP;
+				case DIR_DOWN_NOBLOCK:
+					return DIR_DOWN;
+				case DIR_LEFT_NOBLOCK:
+					return DIR_LEFT;
+				case DIR_RIGHT_NOBLOCK:
+					return DIR_RIGHT;
+				case DIR_UPLEFT_NOBLOCK:
+					return DIR_UPLEFT;
+				case DIR_UPRIGHT_NOBLOCK:
+					return DIR_UPRIGHT;
+				case DIR_DOWNLEFT_NOBLOCK:
+					return DIR_DOWNLEFT;
+				case DIR_DOWNRIGHT_NOBLOCK:
+					return DIR_DOWNRIGHT;
+			}
+			//An invalid direction is passed, report an error and return that direction
+			ERROR("Internal::NormalizeDir", "Invalid direction %d passed, returning -1", dir);
+			return -1;
+		}
+		//Sets unblockable status on or off. 
+		//direction - Direction passed.
+		//status - Blockable status. 0 - Blockable, 1 - Unblockable, any other value - toggle.
+		int SetBlockability(int dir, int status)
+		{
+			switch(dir)
+			{
+				//Blockable directions passed, set to unblockable only if specifically set to unblockable
+				case DIR_UP:
+					return status == 0 ? dir : DIR_UP_NOBLOCK;
+				case DIR_DOWN:
+					return status == 0 ? dir : DIR_DOWN_NOBLOCK;
+				case DIR_LEFT:
+					return status == 0 ? dir : DIR_LEFT_NOBLOCK;
+				case DIR_RIGHT:
+					return status == 0 ? dir : DIR_RIGHT_NOBLOCK;
+				case DIR_UPLEFT:
+					return status == 0 ? dir : DIR_UPLEFT_NOBLOCK;
+				case DIR_UPRIGHT:
+					return status == 0 ? dir : DIR_UPRIGHT_NOBLOCK;
+				case DIR_DOWNLEFT:
+					return status == 0 ? dir : DIR_DOWNLEFT_NOBLOCK;
+				case DIR_DOWNRIGHT:
+					return status == 0 ? dir : DIR_DOWNRIGHT_NOBLOCK;
+				//Vice versa to above
+				case DIR_UP_NOBLOCK:
+					return status == 1 ? dir : DIR_UP;
+				case DIR_DOWN_NOBLOCK:
+					return status == 1 ? dir : DIR_DOWN;
+				case DIR_LEFT_NOBLOCK:
+					return status == 1 ? dir : DIR_LEFT;
+				case DIR_RIGHT_NOBLOCK:
+					return status == 1 ? dir : DIR_RIGHT;
+				case DIR_UPLEFT_NOBLOCK:
+					return status == 1 ? dir : DIR_UPLEFT;
+				case DIR_UPRIGHT_NOBLOCK:
+					return status == 1 ? dir : DIR_UPRIGHT;
+				case DIR_DOWNLEFT_NOBLOCK:
+					return status == 1 ? dir : DIR_DOWNLEFT;
+				case DIR_DOWNRIGHT_NOBLOCK:
+					return status == 1 ? dir : DIR_DOWNRIGHT;
+			}
+			//An invalid direction is passed, report an error and return that direction
+			ERROR("Internal::SetBlockability", "Invalid direction %d passed, returning -1", dir);
+			return -1;
+		}
 		
 		//Error function
 		void ERROR(char32 name, char32 msg)
 		{
-			printf("Spirit.zh Error: Function %s - %s\n", name, msg);
+			if(ENABLE_LOGGING >= LOGGING_ERROR)
+				printf("Spirit.zh Error: Function %s - %s\n", name, msg);
 		}
 		
 		void ERROR(char32 name, char32 msg, untyped data)
 		{
-			char32 buf[2048];
-			sprintf(buf, "Spirit.zh Error: Function %s - %s\n", name, msg);
-			printf(buf, data);
+			if(ENABLE_LOGGING >= LOGGING_ERROR)
+			{
+				char32 buf[2048];
+				sprintf(buf, "Spirit.zh Error: Function %s - %s\n", name, msg);
+				printf(buf, data);
+			}
 		}
 	}
 }
