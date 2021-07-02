@@ -113,13 +113,13 @@ namespace Spirit
 		//Error function
 		void ERROR(char32 name, char32 msg)
 		{
-			if(ENABLE_LOGGING >= LOGGING_ERROR)
+			if(SETTING_LOGGING >= LOGGING_ERROR)
 				printf("Spirit.zh Error: Function %s - %s\n", name, msg);
 		}
 		
 		void ERROR(char32 name, char32 msg, untyped data)
 		{
-			if(ENABLE_LOGGING >= LOGGING_ERROR)
+			if(SETTING_LOGGING >= LOGGING_ERROR)
 			{
 				char32 buf[2048];
 				sprintf(buf, "Spirit.zh Error: Function %s - %s\n", name, msg);

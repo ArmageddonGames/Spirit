@@ -5,7 +5,7 @@ namespace Spirit
 		void run()
 		{
 			//Create the weapon and launch the script
-			lweapon spirit = Spirit_CreateWeapon(LW_SCRIPT1, this->WeaponScript,
+			lweapon spirit = CreateLWeapon(LW_SCRIPT1, this->WeaponScript,
 							 {this->WeaponInitD[0], this->WeaponInitD[1], this->WeaponInitD[2], this->WeaponInitD[3],
 							 this->WeaponInitD[4], this->WeaponInitD[5], this->WeaponInitD[6], this->WeaponInitD[7]},
 							 this->ID, Hero->X, Hero->Y, this->Power*2, this->Attributes[0], DirRad(Hero->Dir),
@@ -18,7 +18,7 @@ namespace Spirit
 		void run()
 		{
 			//Create the weapon and launch the script
-			lweapon spirit = Spirit_CreateWeapon(LW_SCRIPT1, this->WeaponScript,
+			lweapon spirit = CreateLWeapon(LW_SCRIPT1, this->WeaponScript,
 							 {this->WeaponInitD[0], this->WeaponInitD[1], this->WeaponInitD[2], this->WeaponInitD[3],
 							 this->WeaponInitD[4], this->WeaponInitD[5], this->WeaponInitD[6], this->WeaponInitD[7]},
 							 this->ID, Hero->X, Hero->Y, this->Power*2, this->Attributes[0], DirRad(Hero->Dir),
@@ -29,13 +29,13 @@ namespace Spirit
 	{
 		void run()
 		{
-			DEFINE SHOTS = 1;
+			CONFIG SHOTS = 1;
 			int spiritD[8] = {this->WeaponInitD[0], this->WeaponInitD[1], this->WeaponInitD[2], this->WeaponInitD[3], this->WeaponInitD[4], this->WeaponInitD[5], this->WeaponInitD[6], this->WeaponInitD[7]};
 			repeat(SHOTS)
 			{
-				lweapon spirit = Spirit_CreateWeapon(LW_SCRIPT1, this->WeaponScript, spiritD, this->ID, Hero->X, Hero->Y, this->Power*2, this->Attributes[0], Randf(0, PI*2), this->Sprites[0], this->UseSound, LWF_JUMPPHYSICS|LWF_OBEYSOLID);
+				lweapon spirit = CreateLWeapon(LW_SCRIPT1, this->WeaponScript, spiritD, this->ID, Hero->X, Hero->Y, this->Power*2, this->Attributes[0], Randf(0, PI*2), this->Sprites[0], this->UseSound, LWF_JUMPPHYSICS|LWF_OBEYSOLID);
 				spirit->Gravity = true;
-				Spirit_AirAdjust(spirit, spirit->Step, 3);
+				Move::AirAdjust(spirit, spirit->Step, 3);
 				//Create the weapon and launch the script... 8 times
 			}
 		}
@@ -48,11 +48,11 @@ namespace Spirit
 			//Start of the script. Declare your working variables here as well as any counters you need to use.
 			float work[1];
 
-			while(Spirit_IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
+			while(IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
 			{
-				Spirit_Move_Veer(this, work, 5, 90);
+				Move::Veer(this, work, 5, 90);
 				
-				Spirit_Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
+				Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
 			}
 			//Weapon is dead. Run death effects here.
 			
@@ -65,11 +65,11 @@ namespace Spirit
 		{
 			//Start of the script. Declare your working variables here as well as any counters you need to use.
 
-			while(Spirit_IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
+			while(IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
 			{
-				Spirit_Move_Drift(this, 50, 90);
+				Move::Drift(this, 50, 90);
 				
-				Spirit_Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
+				Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
 			}
 			//Weapon is dead. Run death effects here.
 			
@@ -88,14 +88,14 @@ namespace Spirit
 			this->HitWidth = 64;
 			this->HitHeight = 64;
 
-			while(Spirit_IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
+			while(IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
 			{
-				Spirit_Move_Sine(this, work, amp, initangle, rot);
+				Move::Sine(this, work, amp, initangle, rot);
 				SolidRectCollision(this->X, this->Y, this->X+this->HitWidth, this->Y+this->HitHeight);
 				//Trace(this->X);
 				//Trace(this->Y);
 				
-				Spirit_Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
+				Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
 			}
 			//Weapon is dead. Run death effects here.
 			
@@ -109,15 +109,15 @@ namespace Spirit
 			//Start of the script. Declare your working variables here as well as any counters you need to use.
 			float work[4];
 			
-			while(Spirit_IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
+			while(IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
 			{
-				Spirit_Move_Bounce(this, work, 3, 0.6, 30);
+				Move::Bounce(this, work, 3, 0.6, 30);
 				//Trace(this->Jump);
 				if(work[0] > 5)
 				{
-					Spirit_Kill(this);
+					Kill(this);
 				}
-				Spirit_Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
+				Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
 			}
 			//Weapon is dead. Run death effects here.
 			
@@ -130,9 +130,9 @@ namespace Spirit
 		{
 			//Start of the script. Declare your working variables here as well as any counters you need to use.
 			
-			while(Spirit_IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
+			while(IsAlive(this)) //The main body of the script. The stuff the weapon actually does goes here.
 			{
-				Spirit_Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
+				Waitframe(this); //End of the frame. Run the necessary updates for the weapon here like their counter.
 			}
 			//Weapon is dead. Run death effects here.
 			Remove(this);
@@ -144,8 +144,8 @@ namespace Spirit
 		void run()
 		{
 			TraceS("PauseWeapons Used:\n");
-			Spirit_ToggleSuspend();
-			if(Spirit_IsSuspended())
+			ToggleSuspend();
+			if(IsSuspended())
 				TraceS("Header is suspended\n");
 			else
 				TraceS("Header is not suspended\n");

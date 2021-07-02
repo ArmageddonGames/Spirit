@@ -1,0 +1,228 @@
+namespace Spirit
+{
+	namespace Move
+	{
+		//Supply a float array of size 1 or higher to use. Otherwise it does nothing.
+		//Args:
+		//	acc - Step Speed at which the weapon accelerates in. 100 = 1 pixel per frame (you probably don't want it this high unless you know what you are doing)
+		//	angle - Angle, in degrees, at which weapon accelerates in. 
+		//Work indicies:
+		//	0 - Current acceleration level, in 100ths of a pixel per frame.
+		void Veer(lweapon spirit, untyped work, float acc, int angle)
+		{
+			DEFINE WORKSIZE = 1;
+			CONST_ASSERT(WORKSIZE <= MAX_WORKSIZE, "MAX_WORKSIZE too small!");
+			if(SizeOfArray(work) >= WORKSIZE && IsSpiritLW(spirit))
+			{
+				work[0] += acc/100;
+				spirit->X += VectorX((work[0]), angle);
+				spirit->Y += VectorY((work[0]), angle);
+			}
+			else
+			{
+				ERROR("Spirit_Move_Veer", SizeOfArray(work) < WORKSIZE ? "Bad Array Size" : "Not a Spirit Weapon");
+			}
+		}
+
+		//Weapon drifts in a given direction
+		//Args:
+		//	step - Step Speed at which the weapon drifts in. 100 = 1 pixel per frame.
+		//	angle - Angle, in degrees, at which weapon drifts in. 
+		void Drift(lweapon spirit, float step, int angle)
+		{
+			if(IsSpiritLW(spirit))
+			{
+				spirit->X += VectorX(step/100, angle);
+				spirit->Y += VectorY(step/100, angle);
+			}
+			else
+			{
+				ERROR("Spirit_Move_Drift", "Not a Spirit Weapon");
+			}
+		}
+
+		//Weapon moves in a sine wave. The functional bits of code are taken straight from Ghost.zh and adapted for this header. I do not understand sine waves >.>
+		//Supply a float array of size 3 or higher to use. Otherwise, it does nothing.
+		//Args:
+		//	amplitude - the overall amplitude the sine wave moves at.
+		//	initangle - The initial angle.
+		//	angle - The angular frequency, in degrees, per frame. Set to a negative number to produce Cosine movement.
+		//Work indicies:
+		//	0 - The current angle.
+		//	1 - Working variable that is applied to the weapon's X movement.
+		//	2 - Ditto, but for the weapon's Y movement.
+		void Sine(lweapon spirit, untyped work, float amp, float initangle, float angle)
+		{
+			DEFINE WORKSIZE = 1;
+			CONST_ASSERT(WORKSIZE <= MAX_WORKSIZE, "MAX_WORKSIZE too small!");
+			if(SizeOfArray(work) >= WORKSIZE && IsSpiritLW(spirit))
+			{
+				work[0] += angle;
+				// Adjust the weapon's position at an angle
+				// perpendicular to that of its forward movement.
+				float offset = amp*Sin(work[0]+initangle);
+			
+				//Okay, here's the actual position setting
+				spirit->X += offset*RadianCos(spirit->Angle+(PI/2));
+				spirit->Y += offset*RadianSin(spirit->Angle+(PI/2));
+			}
+			else
+			{
+				ERROR("Spirit_Move_Sine", SizeOfArray(work) < WORKSIZE ? "Bad Array Size" : "Not a Spirit Weapon");
+			}
+		}
+		
+		//Weapon moves in pixel increments as opposed to moving normally. Currently only supports circular movement.
+		//This nulls the weapon's normal step speed. Be careful when setting step speed with this function because it will take on any new step speed that's assigned to it.
+		//Supply a float array of size 4 or higher to use. Otherwise, it does nothing.
+		//Args:
+		//	increment - The distance at which the weapon jumps positions.
+		//Work indicies:
+		//	0 - Stored Step Speed.
+		//	1 - Stored X movement.
+		//	2 - Stored Y movement.
+		//	3 - Raw distance moved.
+		void Increment(lweapon spirit, untyped work, float increment)
+		{
+			DEFINE WORKSIZE = 4;
+			CONST_ASSERT(WORKSIZE <= MAX_WORKSIZE, "MAX_WORKSIZE too small!");
+			if(SizeOfArray(work) >= WORKSIZE && IsSpiritLW(spirit) && increment > 0)
+			{
+				//Null native step speed.
+				if(spirit->Step > 0)
+				{
+					work[0] = spirit->Step;
+					spirit->Step = 0;
+				}
+				//Increment stored movement
+				work[1] = spirit->X+VectorX(work[0]/100*work[3], RadtoDeg(spirit->Angle));
+				work[2] = spirit->Y+VectorY(work[0]/100*work[3], RadtoDeg(spirit->Angle));
+				//Update postion once the increment is reached until there is no more valid increments this frame.
+				int breakout = 0; //DEBUG breakout counter. Stops the game from hanging.
+				while(work[3] >= increment)
+				{
+					//Deduct from stored movement
+					work[1] = spirit->X;
+					work[2] = spirit->Y;
+					//Move weapon
+					spirit->X += VectorX(increment, RadtoDeg(spirit->Angle));
+					spirit->Y += VectorY(increment, RadtoDeg(spirit->Angle));
+					work[3] -= increment;
+					
+					if(breakout >= 100)
+					{
+						ERROR("Logical", "Spirit_Move_Increment", "Failed to update movement successfully.");
+						break;
+					}
+					breakout ++;
+				}
+				//Add the actual distance travelled
+				work[3] += work[0]/100;
+			}
+			else
+			{
+				ERROR("Spirit_Move_Increment", SizeOfArray(work) < WORKSIZE ? "Bad Array Size" : (increment <= 0 ? "Increment must be a non-zero positive number" : "Not a Spirit Weapon"));
+			}
+		}
+
+		//----------------
+		//|||INCOMPLETE|||
+		//----------------
+		//Weapon bounces in the air, bounding along the ground. It stops bouncing if 
+		//Supply a float array of 3 or higher if you don't have the setting. Otherwise, supply a float array of 4
+		//Args:
+		//	initjump - Initial upward velocity
+		//	jumpdecay - How much is removed from the initial upward velocity after each bounce
+		//	stepdecay - How much is removed from the weapon's step speed after each bounce.
+		//Work Indicies:
+		//	0 - The stored upward velocity, adjusted each time the weapon bounces.
+		//	1 - The current bounce number. This does nothing in the weapon itself beyond the first bounce - it is an easy way for the user to read the number of bounces the weapon has made.
+		//	The following only apply if the fake Z axis setting is turned on. 
+		//	2 - Weapon's fake Z value
+		void Bounce(lweapon spirit, untyped work, float initjump, float jumpdecay, float stepdecay)
+		{
+			DEFINE WORKSIZE = 3;
+			CONST_ASSERT(WORKSIZE <= MAX_WORKSIZE, "MAX_WORKSIZE too small!");
+			bool fakez = false;
+			if(SizeOfArray(work) >= WORKSIZE && IsSpiritLW(spirit)) //Z axis setting is not set to fake.
+			{
+				if(work[1] <= 0)
+				{
+					work[0] = initjump;
+					work[1] = 1;
+				}
+				else
+				{
+					unless(IsSideview()) //Handling for top down
+					{
+						unless(fakez)
+						{
+							//spirit->Z = Max(spirit->Z+work[0], 0);
+							//work[0] = Max(Game->Gravity[GR_TERMINALV]*-1, work[0]-Game->Gravity[GR_STRENGTH]);
+							if(spirit->Z <= 0) //Now rebound off the ground
+							{
+								//spirit->Z = 0;
+								spirit->Jump = work[0];
+								work[0] = Max(0, work[0]-jumpdecay);
+								spirit->Step = Max(0, spirit->Step-jumpdecay);
+								++work[1];
+							}
+						}
+						else
+						{
+							ERROR("Spirit_Move_Bounce","Function does not work with fake Z (yet)");
+						}
+					}
+					else //Handling for sideview
+					{
+						ERROR("Spirit_Move_Bounce","Function does not work in sideview (yet)");
+					}
+				}
+			}
+			else
+			{
+				ERROR("Spirit_Move_Bounce", SizeOfArray(work) < WORKSIZE ? "Bad Array Size" : "Not a Spirit Weapon");
+			}
+		}
+		//----------------
+		//|||INCOMPLETE|||
+		//----------------
+		//Weapon moves in an orbit
+		void Orbit(lweapon spirit, untyped work, int orbit, int increment)
+		{
+			DEFINE WORKSIZE = 1;
+			CONST_ASSERT(WORKSIZE <= MAX_WORKSIZE, "MAX_WORKSIZE too small!");
+			if(SizeOfArray(work) >= WORKSIZE && IsSpiritLW(spirit))
+			{
+				ERROR("Spirit_Move_Orbit", "Function is not yet implemented");
+			}
+			else
+			{
+				ERROR("Spirit_Move_Orbit", SizeOfArray(work) < WORKSIZE ? "Bad Array Size" : "Not a Spirit Weapon");
+			}
+		}
+	
+		//Launches the weapon into the air, taking into account how Step and Jump interact with the Y Axis in Sideview and when Fake Z is set. To instead simply adjust the weapon, pass the weapon's step speed and their jump into the latter two args.
+		//This only changes step and jump in Sideview screens. If you don't plan on using sideview screens in your quest or you may leave this out.
+		//Be sure to use WrapAngle() on the weapon's angle first!
+		void AirAdjust(lweapon spirit, int step, float jump)
+		{
+			if(IsSideview())
+			{
+				--spirit->Y;
+				//Obtain the difference between angles
+				float difference = spirit->Angle >= RAD_DIR_LEFT ? Abs(spirit->Angle-PI*1.5) : Abs(spirit->Angle-PI/2);
+				
+				//Calculate the step speed and jump mods needed to make and apply them to step speed
+				spirit->Step = (step/(PI/2)*difference);
+				spirit->Jump = spirit->Angle > RAD_DIR_LEFT ? (step-(step/(PI/2)*difference))/100 : -1*(step-(step/(PI/2)*difference))/100;
+				
+				//Snap the spirit's angle to Left or Right depending on its angle
+				if(spirit->Angle > RAD_DIR_UP || spirit->Angle < RAD_DIR_DOWN) //spirit going right
+					spirit->Angle = RAD_DIR_RIGHT;
+				else if(spirit->Angle < RAD_DIR_UP || spirit->Angle > RAD_DIR_DOWN) //spirit going left
+					spirit->Angle = RAD_DIR_LEFT;
+			}
+		}
+	}
+}

@@ -91,11 +91,87 @@ lweapon script ExampleWeapon{
 
 This header has a number of important concepts and processes planned to be in this header. It is important to understand these
 
-#### Spiriting:
-The act of using a weapon as a "puppet" of sorts.
-	LWeapons created with this header have no collision detection \- they rely on "hitting" LWeapons that they spawn when colliding with enemies to do damage. This makes it so they don't instantly die when they hit enemies and don't require constant DeadState setting to penetrate enemies. It also makes things like damage handling easier. Currently they don't collide with anything as of yet \- it is still being worked on.
-	To stop Spirited weapons from breaking if their Collision detection is set to true, all Spirited weapons have their Collision Detection set to false every frame if set true by something. Another notable feature is that all Spirited weapons move based off angles rather than directions - Their Direction is normally set based off their angle.
-	On addition, all Spirited LWeapons have a cooldown variable. This is done to slow down the production of excessive blocking sounds on NPCs that are shielded or blocked them.
+#### Namespaces:
+Namespaces are a scripting feature added in _ZC_ _v2.55_ which allows scripters to set scripts, global functions, global variables, etc. into an arbitary scope which can be invoked at any time, including across files. Multiple declarations of the same namespace also share their scope and contents between each other.
+Spirit.zh makes extensive usage of namespaces to allow for simple, succinct setup of script, variable, function, etc. names and allows for you to call them in a more shortform matter when your scripts are set up appropriately.
+
+In order to invoke something set into a namespace, you can do the following:
+A) Declare the namespace
+Example:
+```
+namespace Spirit
+{
+	//Stuff goes here. Anything that is declared in other instances of the namespace are in scope.
+}
+```
+
+B) Invoke the Namespace using `[namespace]::` for a single call
+Example:
+```
+lweapon spirit = Spirit::CreateLWeapon(type, wscript, weaponD, parent, x, y, damage, step, angle, sprite, sfx, flags);
+```
+
+C) Invoke the Namespace for a given scope by calling `using namespace [namespace];`. This does not carry over across multiple files if declared at a global scope.
+```
+using namespace Spirit;
+bool collision = SolidRectCollisionSides(spirit->X, spirit->Y, spirit->X+spirit->HitWidth, spirit->Y+spirit->HitHeight); //Spirit:: is in scope
+Trace(collision);
+```
+If you wish to make a given namespace permanently in scope, you may instead call `always using namespace [namespace]` but this is not done in this header.
+A limitation to the `using namespace` token is that two objects using the same name at the same scope will confuse the compiler and give you a compile error.
+Example:
+```
+CONFIG SP_BLANK = 43;
+using namespace Spirit;
+Trace(SP_BLANK); //ERROR. Compiler cannot tell between the SP_BLANK object declared outside of the namespace and the one declared in the header.
+//You may get around this limitation by specifying which namespace to choose. This will be covered in more detail later.
+Trace(::SP_BLANK); //Will trace 43
+Trace(Spirit::SP_BLANK); //Will trace whatever it is set in the header
+```
+
+In order to invoke a namespace of a namespace which is nested within another, you must first invoke the parent namespace first.
+Example:
+```
+namespace Spirit
+{
+	namespace Misc
+	{
+		//Spirit::Misc:: are now in scope
+	}
+	//Misc:: leaves scope
+	void foo()
+	{
+		lweapon spirit = CreateLWeapon(type, wscript, weaponD, parent, x, y, damage, step, angle, sprite, sfx, flags);
+		Trace(Misc::GetDirAngle(spirit, true)); //Spirit:: is already in scope, no need to call that preceeding Misc::.
+	}
+	using namespace Misc;
+	//Spirit::Misc:: are now in scope whenever you declare the Spirit namespace.
+}
+namespace Misc
+{
+	//ERROR. You will have declared different Misc::, one which is not parented by Spirit::
+}
+```
+
+You can specify which scope you can call an object at regardless of what namespaces are in scope.
+In order to specify an object at the global scope, append `::` to the start of the function call.
+Example:
+```
+CONFIG SP_BLANK = 43;
+namespace Spirit
+{
+	void foo()
+	{
+		Trace(SP_BLANK); //Will trace whatever it is set in the header
+		Trace(Spirit::SP_BLANK); //Will trace whatever it is set in the header regardless of which scope it is in
+		Trace(::SP_BLANK); //Will trace 43
+	}
+}
+```
+
+The namespaces of each function included in the header's documentation are denoted at the top of the section the function is in as `[namespace]::`.
+
+For more information on namespaces, please consult `ZScript_Additions.txt`, located in `[ZC/ZQ directory]\docs` by default.
 
 #### Slot:
 A chunk of data corresponding to one whole entity in any of the Spirit Weapon arrays.
@@ -126,7 +202,7 @@ Currently the demo quest is very barren and in a pre-alpha state. It currently o
 ###### Spirit ZH credits:
 **ZoriaRPG:** Providing support
 
-**Venrob:** Providing support and some code
+**Emily:** Providing support and some code
 
 ###### Demo Quest credits:
 **Raiden:** Assembling the Dance of Remembrance Tileset

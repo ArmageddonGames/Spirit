@@ -6,7 +6,7 @@ TO BE RESTRUCTURED SOON
 =================== HEADER INFORMATION ===================
 NAME: Spirit Weapon
 AUTHOR: Orithan Fox
-VERSION: Alpha 4 Build 1
+VERSION: Alpha 5 Build 1
 ZELDA QUEST VERSION: Zelda Quest AEternal (v2.55) Alpha 92 and up
 
 WARNING! THIS IS IN ALPHA STATE. FEATURES MAY BE CHANGED OR REMOVED WITHOUT PRIOR WARNING. SOME FEATURES ARE INCOMPLETE OR NONFUNCTIONAL. YOU HAVE BEEN WARNED.
@@ -48,101 +48,34 @@ There are no global functions included as of now
 
 These set up and manage things related to LWeapons and LWeapon data.
 
+-=-=-=-=-=-=-=- COMMON -=-=-=-=-=-=-=-
+
+File: spirit_zh\Common.zh
+Namespace: Spirit
+
+These are functions that are commonly used by the header. 
+
 
 +---------------------------------------+
-lweapon Spirit_CreateWeapon(int type, int wscript, int weaponD, int parent, int x, int y, int damage, int step, int angle, int sprite, int sfx, int flags);
-lweapon Spirit_CreateWeapon(int type, char32 name, int weaponD, int parent, int x, int y, int damage, int step, int angle, int sprite, int sfx, int flags);
+lweapon CreateLWeapon(int type, int wscript, int weaponD, int parent, int x, int y, int damage, int step, int angle, int sprite, int sfx, int flags);
+lweapon CreateLWeapon(int type, char32 name, int weaponD, int parent, int x, int y, int damage, int step, int angle, int sprite, int sfx, int flags);
 
-type = The type of weapon to create
-wscript = The weapon script to assign to the script
-name = The name of the script to assign.
-weaponD = The weapon script's D args. Pass an array into this arg.
-parent = The ID of the weapon's parent item. Set to -1 if not using a parent item.
-x = X position to create at.
-y = position to create at.
-damage = Weapon's Damage.
-step = How fast the weapon moves, in 100ths of a pixel per frame.
-angle = The weapon's movement angle.
-sprite = The sprite the weapon uses.
-sfx = The SFX played when the weapon is created
-flags = The weapon's flags.
+type: The type of weapon to create
+wscript: The weapon script to assign to the script
+name: The name of the script to assign.
+weaponD: The weapon script's D args. Pass an array into this arg.
+parent: The ID of the weapon's parent item. Set to -1 if not using a parent item.
+x: X position to create at.
+y: position to create at.
+damage: Weapon's Damage.
+step: How fast the weapon moves, in 100ths of a pixel per frame.
+angle: The weapon's movement angle.
+sprite: The sprite the weapon uses.
+sfx: The SFX played when the weapon is created
+flags: The weapon's flags.
 +---------------------------------------+
 Creates, sets up and returns a Spirited LWeapon with basic movement properties. Overloaded to be able to set the script via name instead.
 Additional properties are set through the appropriate actions.
-
-
-+---------------------------------------+
-bool Spirit_Waitframe(lweapon spirit);
-
-spirit = LWeapon passed
-+---------------------------------------+
-CALL INSTEAD OF Waitframe() IN SPIRIT WEAPON SCRIPTS
-Updates the spirit weapon's internal variables and calls Waitframe() and does not return while suspended. This acts as the Spirit Weapon's Waitframe.
-This can be called within your own custom Waitframe function in the event you need to run your own updates to the weapon evert frame.
-
-
-+---------------------------------------+
-void Spirit_Suspend();
-
-+---------------------------------------+
-Suspends all SpiritWeapon activity.
-Call this whenever you would want the header's activity to be suspended; including at any time you wish to freeze the screen.
-It is highly recommended that you insert this function call into any functions that freeze the screen.
-
-
-+---------------------------------------+
-void Spirit_Resume();
-
-+---------------------------------------+
-Resumes all SpiritWeapon activity.
-Call this whenever you would want the header's activity to resume; including at any time you wish to unfreeze the screen.
-It is highly recommended that you insert this function call into any functions that unfreeze the screen.
-
-
-+---------------------------------------+
-void Spirit_ToggleSuspend();
-
-+---------------------------------------+
-Toggles the suspension setting on and off.
-
-
-+---------------------------------------+
-bool Spirit_IsSuspended();
-
-+---------------------------------------+
-Returns true if the header is suspended.
-
-
-+---------------------------------------+
-bool Spirit_IsAlive(lweapon weapon);
-
-weapon = LWeapon passed
-+---------------------------------------+
-Returns true if the Spirit Weapon is alive or not.
-
-
-+---------------------------------------+
-void Spirit_Kill(lweapon weapon);
-
-weapon = LWeapon passed
-+---------------------------------------+
-Kills a scripted weapon
-
-
-+---------------------------------------+
-void Spirit_Revive(lweapon weapon);
-
-weapon = LWeapon passed
-+---------------------------------------+
-Revives a dead scripted weapon
-
-
-+---------------------------------------+
-bool IsSpiritLWeapon(lweapon weapon);
-
-weapon = LWeapon passed
-+---------------------------------------+
-Returns wherever weapon is a weapon controlled by SpiritWeapon.zh
 
 
 +---------------------------------------+
@@ -156,52 +89,91 @@ scriptname: The name of the LWeapon script to search for.
 args: An array containing the args to apply to the weapon script's D vars.
 +---------------------------------------+
 Creates an LWeapon and assigns a script and its D args to it. Overloaded to allow to call for script by name.
-Called internally by Spirit_CreateWeapon();
+Called internally by Spirit::CreateWeapon();
 
 
 +---------------------------------------+
-void Spirit_AirAdjust(lweapon spirit, int step, float jump);
+bool Waitframe(lweapon spirit);
 
-spirit = LWeapon passed
-step = Step speed used
-jump = Jump factor used.
+spirit: LWeapon passed
 +---------------------------------------+
-Takes the incoming step and jump args and a weapon and adjusts them based off angle in sideview screens. To simply have it adjust the weapon just pass its ->Step and ->Jump pointers into the function
-Note: This doesn't actually check to see if a Spirited LWeapon has been passed. You can freely use this function in non-SpiritLWeapon scripts if you so wish to, but you are probably better off using a version of this function with a more all-purpose name outside of SpiritLWeapon scripts in case this function changes.
-
-
-+---------------------------------------+
-void Spirit_Update_SetDirAngle(lweapon spirit, int angle, bool orthognal);
-void Spirit_Update_SetDirAngle(lweapon spirit, bool orthognal);
-
-spirit = LWeapon passed
-angle = Angle passed
-orthognal = Wherever to set it to any of the orthognal directions or just the cardinal directions.
-+---------------------------------------+
-Sets the internal direction of the weapon based off a given angle. Overloaded to make the angle arg optional, checking the weapon's angle instead.
-Note: This doesn't actually check to see if a Spirited LWeapon has been passed. You can freely use this function in non-SpiritLWeapon scripts if you so wish to, but you are probably better off using a version of this function with a more all-purpose name outside of SpiritLWeapon scripts in case this function changes.
+If your script is not in the "namespace Spirit" scope, be sure to call Spirit::Waitframe() instead of Waitframe() even if you have invoked "using namespace Spirit". Otherwise you will either call the regular Waitframe or cause a compile error if invoked "using namespace Spirit".
+Updates the spirit weapon's internal variables and calls Waitframe() and does not return while suspended. This acts as the Spirit Weapon's Waitframe.
+This can be called within your own custom Waitframe function in the event you need to run your own updates to the weapon evert frame.
 
 
 +---------------------------------------+
-void Spirit_Update_GetDirAngle(lweapon spirit, int angle, bool orthognal);
-void Spirit_Update_GetDirAngle(lweapon spirit, bool orthognal);
+void Suspend();
 
-spirit = LWeapon passed
-angle = Angle passed
-orthognal = Wherever to check for any of the orthognal directions or just the cardinal directions.
 +---------------------------------------+
-Gets the direction the weapon would be if it calls Spirit_Update_GetDirAngle() this frame. Overloaded to make the angle arg optional, checking the weapon's angle instead.
-Note: This doesn't actually check to see if a Spirited LWeapon has been passed. You can freely use this function in non-SpiritLWeapon scripts if you so wish to, but you are probably better off using a version of this function with a more all-purpose name outside of SpiritLWeapon scripts in case this function changes.
+Suspends all SpiritWeapon activity.
+Call this whenever you would want the header's activity to be suspended; including at any time you wish to freeze the screen.
+It is highly recommended that you insert this function call into any functions that freeze the screen.
+
+
++---------------------------------------+
+void Resume();
+
++---------------------------------------+
+Resumes all SpiritWeapon activity.
+Call this whenever you would want the header's activity to resume; including at any time you wish to unfreeze the screen.
+It is highly recommended that you insert this function call into any functions that unfreeze the screen.
+
+
++---------------------------------------+
+void ToggleSuspend();
+
++---------------------------------------+
+Toggles the suspension setting on and off.
+
+
++---------------------------------------+
+bool IsSuspended();
+
++---------------------------------------+
+Returns true if the header is suspended.
+
+
++---------------------------------------+
+bool IsAlive(lweapon weapon);
+
+weapon: LWeapon passed
++---------------------------------------+
+Returns true if the Spirit Weapon is alive or not.
+
+
++---------------------------------------+
+void Kill(lweapon weapon);
+
+weapon: LWeapon passed
++---------------------------------------+
+Kills a scripted weapon
+
+
++---------------------------------------+
+void Revive(lweapon weapon);
+
+weapon: LWeapon passed
++---------------------------------------+
+Revives a dead scripted weapon
+
+
++---------------------------------------+
+bool IsSpirit(lweapon weapon);
+
+weapon: LWeapon passed
++---------------------------------------+
+Returns wherever weapon is a weapon controlled by SpiritWeapon.zh
 
 
 +---------------------------------------+
 !Temporary; until it arrives in std.zh!
 bool SolidCollision(int x1, int y1, int x2, int y2);
 
-x1 = Left side of hitbox
-y1 = Top side of hitbox
-x2 = Right side of hitbox
-y2 = Bottom side of hitbox
+x1: Left side of hitbox
+y1: Top side of hitbox
+x2: Right side of hitbox
+y2: Bottom side of hitbox
 +---------------------------------------+
 Check the corners of a weapon's hitbox for collision with solid combos.
 Note: This doesn't actually check to see if a Spirited LWeapon has been passed. You can freely use this function in non-SpiritLWeapon scripts if you so wish to, but you are probably better off using a version of this function with a more all-purpose name outside of SpiritLWeapon scripts in case this function changes.  
@@ -211,10 +183,10 @@ Note: This doesn't actually check to see if a Spirited LWeapon has been passed. 
 !Temporary; until it arrives in std.zh!
 bool SolidCollisionFull(int x1, int y1, int x2, int y2);
 
-x1 = Left side of hitbox
-y1 = Top side of hitbox
-x2 = Right side of hitbox
-y2 = Bottom side of hitbox
+x1: Left side of hitbox
+y1: Top side of hitbox
+x2: Right side of hitbox
+y2: Bottom side of hitbox
 +---------------------------------------+
 Check the corners of a weapon's hitbox for collision with fully solid combos.
 Note: This doesn't actually check to see if a Spirited LWeapon has been passed. You can freely use this function in non-SpiritLWeapon scripts if you so wish to, but you are probably better off using a version of this function with a more all-purpose name outside of SpiritLWeapon scripts in case this function changes. 
@@ -227,20 +199,20 @@ FixedCollision(npc target, lweapon weapon);
 FixedCollision(lweapon weapon, eweapon target);
 FixedCollision(eweapon target, lweapon weapon);
 
-weapon = LWeapon passed. Must be one of the two args
-target = Targeted pointer. Must one of the args and it currently must be be either an NPC or an EWeapon
+weapon: LWeapon passed. Must be one of the two args
+target: Targeted pointer. Must one of the args and it currently must be be either an NPC or an EWeapon
 +---------------------------------------+
 Exactly the same as the existing FixedCollision Function.
 Note: This doesn't actually check to see if a Spirited LWeapon has been passed. You can freely use this function in non-SpiritLWeapon scripts if you so wish to, but you are probably better off using a version of this function with a more all-purpose name outside of SpiritLWeapon scripts in case this function changes. 
 
 
 +---------------------------------------+
-bool Spirit_CanMove(lweapon spirit, int angle, int step, int imprecision, bool full);
+bool CanMove(lweapon spirit, int angle, int step, int imprecision, bool full);
 
-spirit = LWeapon passed
-angle = Angle of movement to be checked
-step = Step speed to check
-imprecision[4] = What sides of the hitbox are shrunk for this function. Pass an array of at least size 4 to use this feature.
+spirit: LWeapon passed
+angle: Angle of movement to be checked
+step: Step speed to check
+imprecision[4]: What sides of the hitbox are shrunk for this function. Pass an array of at least size 4 to use this feature.
 +---------------------------------------+
 Checks to see if the weapon can move the full distance at angle angle with step step speed.
 Currently only checks for collision with solid combos for weapons that obey solidity
@@ -250,10 +222,10 @@ Currently only checks for collision with solid combos for weapons that obey soli
 int SolidRectCollisionSides(int x1, int y1, int x2, int y2);
 bool SolidRectCollision(int x1, int y1, int x2, int y2);
 
-x1 = Left side of hitbox
-y1 = Top side of hitbox
-x2 = Right side of hitbox
-y2 = Bottom side of hitbox
+x1: Left side of hitbox
+y1: Top side of hitbox
+x2: Right side of hitbox
+y2: Bottom side of hitbox
 +---------------------------------------+
 Accurately checks the outer edges of the weapon for collision with solidity. In addition it checks for which sides have solid collision and returns them in the form of a flagset. To access this flagset using the traditional DIR_* constants call Pow(2, DIR_*). Call SolidRectCollision instead to simply have it return as a boolean.
 This function is a good deal slower than other solidity checking functions. This is only called internally on weapons with either a HitWidth or HitHeight of at or above SETTING_ACCURATE_SOLIDITY to save on processing with smaller weapons.
@@ -264,8 +236,8 @@ This function is a good deal slower than other solidity checking functions. This
 int EffectiveX(lweapon wpn, bool hit);
 int EffectiveY(lweapon wpn, bool hit);
 
-wpn = LWeapon passed
-hit = Wherever to use the hitbox or draw offsets. True - hitbox, false - draw.
+wpn: LWeapon passed
+hit: Wherever to use the hitbox or draw offsets. True - hitbox, false - draw.
 +---------------------------------------+
 Returns the effective location of a pointer.
 Currently this is only loaded to work with LWeapons. It will be overloaded to accept other types of pointers as args.
@@ -274,6 +246,7 @@ Currently this is only loaded to work with LWeapons. It will be overloaded to ac
 
 -=-=-=-=-=-=-=- ANIMATION -=-=-=-=-=-=-=-
 
+File: spirit_zh\Animate.zh
 Namespace: Spirit::Animate
 
 The following functions set up special animations for the weapons
@@ -291,7 +264,7 @@ In order to use these functions, you must first supply an array of at least the 
 
 
 +---------------------------------------+
-void Spirit_Move_Veer(lweapon spirit, untyped work[1], float acc, int angle);
+void Veer(lweapon spirit, untyped work[1], float acc, int angle);
 
 spirit: LWeapon passed.
 work[1]: An array containing the variables the movement type needs to work. You must supply an array of at least size 3 here.
@@ -304,7 +277,7 @@ Causes the weapon to accelerate at an angle.
 
 
 +---------------------------------------+
-void Spirit_Move_Drift(lweapon spirit, float step, int angle);
+void Drift(lweapon spirit, float step, int angle);
 
 spirit: LWeapon passed.
 step: Step Speed at which the weapon drifts at. 100 = 1 pixel per frame.
@@ -315,7 +288,7 @@ Causes the weapon to drift at an angle.
 
 
 +---------------------------------------+
-void Spirit_Move_Sine(lweapon spirit, untyped work[1], float amp, float initangle, float angle);
+void Sine(lweapon spirit, untyped work[1], float amp, float initangle, float angle);
 
 spirit: LWeapon passed.
 work[1]: An array containing the variables the movement type needs to work. You must supply an array of at least size 3 here.
@@ -331,7 +304,7 @@ Orithan's note: I have no idea how to Sine Wave x.x . I had to lift the function
 
 +---------------------------------------+
 !INCOMPLETE!
-void Spirit_Move_Bounce(lweapon spirit, untyped work[3 or 4], float initjump, float jumpdecay, float stepdecay);
+void Bounce(lweapon spirit, untyped work[3 or 4], float initjump, float jumpdecay, float stepdecay);
 
 spirit: LWeapon passed.
 work[3 or 4]: An array containing the variables the movement type needs to work. You must supply an array of at least size 3 if not using the Fake Z Axis setting or 4 if you are using it.
@@ -350,7 +323,7 @@ Causes the weapon to bounce in a line. This is currently functional but incomple
 
 +---------------------------------------+
 !NON-FUNCTIONAL!
-void Spirit_Move_Orbit(lweapon spirit, untyped work[1], int orbit, int increment);
+void Orbit(lweapon spirit, untyped work[1], int orbit, int increment);
 
 spirit: LWeapon passed.
 work[1]: An array containing the variables the movement type needs to work. You must supply an array of at least size 3 here.
@@ -363,9 +336,21 @@ angle: The angular frequency, in degrees, per frame.
 Causes the weapon to orbit around a given point. This is currently non-functional as of now - it's just a function call at this point.
 
 
++---------------------------------------+
+void AirAdjust(lweapon spirit, int step, float jump);
+
+spirit: LWeapon passed
+step: Step speed used
+jump: Jump factor used.
++---------------------------------------+
+Takes the incoming step and jump args and a weapon and adjusts them based off angle in sideview screens. To simply have it adjust the weapon just pass its ->Step and ->Jump pointers into the function
+Note: This doesn't actually check to see if a Spirited LWeapon has been passed. You can freely use this function in non-SpiritLWeapon scripts if you so wish to, but you are probably better off using a version of this function with a more all-purpose name outside of SpiritLWeapon scripts in case this function changes.
+
+
 
 -=-=-=-=-=-=-=- HIT EFFECTS -=-=-=-=-=-=-=-
 
+File: spirit_zh\Hit.zh
 Namespace: Spirit::Hit
 
 The following functions produce special hit effects, which are played when the weapon hits an enemy.
@@ -376,6 +361,7 @@ There are currently no Hit Effect functions defined as of yet
 
 -=-=-=-=-=-=-=- DEATH -=-=-=-=-=-=-=-
 
+File: spirit_zh\Death.zh
 Namespace: Spirit::Death
 
 The following functions produce special death effects, which are played when the weapon dies.
@@ -386,6 +372,7 @@ There are currently no death functions as of yet.
 
 -=-=-=-=-=-=-=- STATUS -=-=-=-=-=-=-=-
 
+File: spirit_zh\Status.zh
 Namespace: Spirit::Status
 
 The following functions cause the weapons to cause special status effects to enemies.
@@ -396,27 +383,35 @@ There are currently no status functions as of yet.
 
 -=-=-=-=-=-=-=- MISCELLANEOUS -=-=-=-=-=-=-=-
 
+File: spirit_zh\Misc.zh
 Namespace: Spirit::Misc
 
 A catch all collection of functions that don't fit anywhere else
 
-No functions are currently under the namespace right now but are planned to do so in the near future.
+
++---------------------------------------+
+void SetDirAngle(lweapon spirit, int angle, bool orthognal);
+void SetDirAngle(lweapon spirit, bool orthognal);
+
+spirit: LWeapon passed
+angle: Angle passed
+orthognal: Wherever to set it to any of the orthognal directions or just the cardinal directions.
++---------------------------------------+
+Sets the internal direction of the weapon based off a given angle. Overloaded to make the angle arg optional, checking the weapon's angle instead.
+Note: This doesn't actually check to see if a Spirited LWeapon has been passed. You can freely use this function in non-SpiritLWeapon scripts if you so wish to, but you are probably better off using a version of this function with a more all-purpose name outside of SpiritLWeapon scripts in case this function changes.
+
+
++---------------------------------------+
+void GetDirAngle(lweapon spirit, int angle, bool orthognal);
+void GetDirAngle(lweapon spirit, bool orthognal);
+
+spirit: LWeapon passed
+angle: Angle passed
+orthognal: Wherever to check for any of the orthognal directions or just the cardinal directions.
++---------------------------------------+
+Gets the direction the weapon would be if it calls Spirit::GetDirAngle() this frame. Overloaded to make the angle arg optional, checking the weapon's angle instead.
+Note: This doesn't actually check to see if a Spirited LWeapon has been passed. You can freely use this function in non-SpiritLWeapon scripts if you so wish to, but you are probably better off using a version of this function with a more all-purpose name outside of SpiritLWeapon scripts in case this function changes.
 
 
 
--=-=-=-=-=-=-=- INTERNAL -=-=-=-=-=-=-=-
-
-Namespace: Spirit::Internal
-
-A library of internal functions that handle the behind the scenes stuff. Use these with caution and do not mess with them unless you know what you are doing.
-These may be changed or removed in future versions without warning. You have been warned.
-
-
-
-=================== DEBUG FUNCTIONS AND SCRIPTS ===================
-
-These run debugging stuff. These can slow the script right down, so you should probably use them only when debugging.
-Enable these by setting SETTING_PRINTERRORS to 1.
-
-No functions of the type are implemented as of yet
-
+Internal functions are documented in "Internal.txt"

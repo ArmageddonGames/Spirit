@@ -1,0 +1,43 @@
+-=-=-=-=-=-=-=- INTERNAL -=-=-=-=-=-=-=-
+
+File: spirit_zh\Internal.zh
+Namespace: Spirit::Internal
+
+A library of internal functions that handle the behind the scenes stuff. Use these with caution and do not mess with them unless you know what you are doing.
+These may be changed or removed in future versions without warning. You have been warned.
+
+
++---------------------------------------+
+bool ComboFullSolid(int cmb);
+
+cmb: Combo position 
++---------------------------------------+
+Returns true if the combo at cmb position is fully solid.
+
+
++---------------------------------------+
+int NormalizeDir(int dir);
+
+dir: Direction passed 
++---------------------------------------+
+Reads any direction as one of the orthognal directions. Similar to its NPC complement in Ghost.zh.
+
+
++---------------------------------------+
+int SetBlockability(int dir, int status);
+
+dir: Direction passed 
+status: The status of the blockablility you wish to set. 0 = Blockable, 1 = Unblockable, any other value = Toggle.
++---------------------------------------+
+Returns the direction the passed direction would be if it would be set blockable or unblockable.
+
+
++---------------------------------------+
+void ERROR(char32 name, char32 msg);
+void ERROR(char32 name, char32 msg, untyped data);
+
+name: Name of function
+msg: Error message
+data: Miscellaneous data pointer passed 
++---------------------------------------+
+Reports an error. Overloads to also include a data pointer.

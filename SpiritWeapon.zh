@@ -5,10 +5,17 @@
 #option TRUE_INT_SIZE on
 #option HEADER_GUARD on
 #include "std.zh" //Required for header
-//Required header subfiles
-#include "Spirit_zh/spirit_zh/spirit1_common.zh"
-#include "Spirit_zh/spirit_zh/spirit1_scripts.zh"
-#include "Spirit_zh/spirit_zh/spirit1_internal.zh"
+//Required header subfiles. Set the include paths so they work with your script setup.
+#include "Spirit_zh/spirit_zh/Common.zh"
+#include "Spirit_zh/spirit_zh/Move.zh"
+#include "Spirit_zh/spirit_zh/Animate.zh"
+#include "Spirit_zh/spirit_zh/Hit.zh"
+#include "Spirit_zh/spirit_zh/Death.zh"
+#include "Spirit_zh/spirit_zh/Status.zh"
+#include "Spirit_zh/spirit_zh/Misc.zh"
+#include "Spirit_zh/spirit_zh/Internal.zh"
+
+#include "Spirit_zh/spirit_zh/Scripts.zh"
 
 typedef const int DEFINE; //Don't change DEFINE constants!
 typedef const int CONFIG;
@@ -16,7 +23,7 @@ typedef const bool CONFIGB;
 
 namespace Spirit
 {
-	CONFIG SPT_BLANK = 44; //Used for several functions like creating invisible "hitting" weapons. Set this the number of a blank sprite in the Sprite Editor. The blank sprite must use the top left tile of a 4x4 block of empty tiles.
+	CONFIG SP_BLANK = 44; //Used for several functions like creating invisible "hitting" weapons. Set this the number of a blank sprite in the Sprite Editor. The blank sprite must use the top left tile of a 4x4 block of empty tiles.
 
 	//Large (2x2) shadow settings
 	// If SPIRITLW_LARGE_SHADOW_TILE is 0, large shadows will be disabled
@@ -24,13 +31,26 @@ namespace Spirit
 	CONFIG LARGE_SHADOW_CSET = 8;
 	CONFIG LARGE_SHADOW_FRAMES = 4;
 	CONFIG LARGE_SHADOW_ANIM_SPEED = 8;
-	CONFIG LARGE_SHADOW_MIN_WIDTH = 3;  // Weapons must be at least this wide
+	CONFIG LARGE_SHADOW_MIN_WIDTH = 3;  // Weapons must draw at least this wide
 	CONFIG LARGE_SHADOW_MIN_HEIGHT = 3; // and this high to use large shadows
 	
+	//This feature will be put off for now.
+	/*
 	CONFIG WEAPON_VARS = 49; //The number of internal variables a weapon has. This is currently outdated and will be updated soon
 	
 	CONFIG BUFFER_SIZE = 16; //The number of LWeapons that can be stored in the GhostWeaponBuffer
 
+	enum weaponvars
+	{
+		WEAPON_VAR_BEHIND,
+		WEAPON_VAR_ID,
+		WEAPON_VAR_DRAWSTYLE,
+		WEAPON_VAR_ORIGINALTILE,
+		WEAPON_VAR_,
+		WEAPON_VAR_END
+	};
+	int WeaponBuffer[WEAPON_VARS*BUFFER_SIZE];
+	*/
 	//Settings
 	
 	enum LogSettings
@@ -39,37 +59,20 @@ namespace Spirit
 		LOGGING_ERROR,
 		LOGGING_FULL
 	};
-	CONFIG ENABLE_LOGGING = LOGGING_FULL; //Wherever the header will log messages to the console or enable debug stuff.
+	CONFIG SETTING_LOGGING = LOGGING_FULL; //Wherever the header will log messages to the console or enable debug stuff.
 		//0 - No logging.
 		//1 - Log on error. 
 		//2 - Full logging. This will slow your game right down, so only use it when debugging
 	CONFIGB SETTING_FAKE_Z = false; //If enabled, movement functions do not modify the weapon's Z position and instead adjust its Y position. This does not affect how the weapon's Z position is manipulated by the engine and you must set this up in your own movement functions in order to for them use it.
 	CONFIG SETTING_ACCURATE_SOLIDITY = 0; //If enabled the header's solidity checks will use a (generally) slower, more accurate solidity checking function if the weapon's collision rectangle is this size, in pixels, on either the x or y axis. Set this to 0 to enable this for weapons of all sizes, set this to a higher number than any size weapon you plan to use in order to disable (eg. 256).
-	CONFIGB SETTING_BOMB_SELFHURT = true; //If enabled, bombs placed with this header can hurt Hero
-	
-	CONFIG HIT_MAXCOOLDOWN = 4; //Maximum Time, in frames, spirited LWeapons can not hit again after hitting a target once. This is done to reduce the amount of blocking noises that get produced.
-	//Cooldown can be increased or decreased based on how fast it is going.
-	//Cooldown timer begins to decrease if Step >= 400
-	//Cooldown timer begins to increase if Step <= 100 
 
 	//Weapon properties
 
 	//LWeapon Misc[] entries. Set so they don't conflict with existing scripts
-	CONFIG LWMISC_COOLDOWN         = 29; //Keeps track of penetrating LWeapon cooldown.
 	CONFIG LWMISC_FLAGS            = 30; //The weapon's spirited flags, so it can receive special spirited effects from the header.
 	CONFIG LWMISC_FLAGS_INT        = 31; //The weapon's internal spirited flags, which are set by the script. All Misc[] variables except this one can be used by non-spirited weapons.
-
-	/*
-	//NPC Misc[] entries. Set so they don't conflict with existing scripts. Are not used right now
-	CONFIG NPCMISC_STATUS          = 12; //Keeps track of scripted NPC status afflictions. NOTE that each NPC can only have one status at a time.
-	CONFIG NPCMISC_STATUS_STRENGTH = 13; //How strong the affliction is.
-	CONFIG NPCMISC_STATUS_DURATION = 14; //Affliction duration.
-	//End of Settings
-	*/
 	
-	//Set up namespaces in main file
-	namespace Update{}
-	using namespace Spirit::Update;
+	//Set up namespaces in main files
 	namespace Animate{}
 	using namespace Spirit::Animate;
 	namespace Move{}

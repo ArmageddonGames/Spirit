@@ -1,7 +1,39 @@
 # SPIRIT WEAPON FOR ZELDA QUEST AETERNAL CHANGELOG
 
+### Alpha 5 Build 1. ZC Version: 2.55 Alpha 92+. July 2nd 2021.
 
-### Alpha 4 Build 1. ZC Version: 2.55 Alpha 92+. July ??? 2021.
+- Removed several unused settings and variables.
+- `ENABLE_LOGGING` is renamed to `SETTING_LOGGING` to be consistent style-wise with other settings.
+- Renamed `SPT_BLANK` to `SP_BLANK` to match the style used by the Sprite constants (`SP_*`) in `std.zh`
+- Renamed the following files
+- - `spirit1_common.zh` -> `Common.zh`
+- - `spirit1_playerAnimation.zh` -> `Animate.zh`
+- - `spirit1_internal.zh` -> `Internal.zh`
+- - `spirit1_scripts.zh` -> `Scripts.zh`
+- Removed the `Spirit_` prefixes from the following in `Common.zh`
+- -	`Spirit_CreateWeapon`. Renamed to `CreateLWeapon`
+- -	`Spirit_Waitframe`
+- -	`Spirit_Suspend`
+- -	`Spirit_Resume`
+- -	`Spirit_ToggleSuspend`
+- -	`Spirit_IsSuspend`
+- - `Spirit_IsSpiritLW`
+- - `Spirit_IsAlive`
+- - `Spirit_Kill`
+- - `Spirit_Revive`
+- Migrated the movement functions into `Move.zh` and under the `Spirit::Move` namespace. Removed `Spirit_Move` prefixes. Also moved `Spirit_AirAdjust()` there and renamed it to `AirAdjust`
+- Moved the following into `Misc.zh` and under the `Spirit::Misc` namespace:
+- - `Spirit_Update_SetDirAngle()`, renamed to `SetDirAngle`
+- - `Spirit_Update_GetDirAngle()`, renamed to `GetDirAngle`
+- - `FixedCollision()`
+- - `EffectiveX()` and `EffectiveY()`
+- - Replaced the "Spiriting" section under "Important Concepts" in the readme with a "Namespaces" section, which explains the concept of namespaces and gives a quick tutorial on how to use them with this header.
+- - Corrected Emily's credits listing in the readme.
+- - Added a separate documentation file for internal functions.
+- - Updated the documentation to give file locations for each of the sections.
+- - Added `Hit.zh`, `Death.zh` and `Status.zh` files. These are imported but do nothing at the moment.
+
+### Alpha 4 Build 1. ZC Version: 2.55 Alpha 92+. July 2nd 2021.
  
 - Removed `LWFI_AIRBORNE` and `LWFI_BOUNCY` out of redundancy. Replaced `LWFI_AIRBORNE` with `LWFI_STATUSEFFECT` (all spirit1_internal)
 - Changed the `LWF_*` (spirit1_common) to group the movement flags together and the piercing and unblockable flags together.

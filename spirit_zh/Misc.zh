@@ -1,0 +1,128 @@
+namespace Spirit
+{
+	namespace Misc
+	{
+		//Updates a weapon's direction based off a radian angle.
+		//Non-spirit weapons can use this but the blockability needs to be maintained yourself.
+		void SetDirAngle(lweapon spirit, int angle, bool orthognal)
+		{
+			angle = WrapAngle(angle);
+			if(IsSpiritLW(spirit))
+				spirit->Dir = Internal::SetBlockability(orthognal ? RadianAngleDir8(angle) : RadianAngleDir4(angle), (spirit->Misc[LWMISC_FLAGS]&LWF_UNBLOCKABLE) ? 1 : 0);
+			else
+				spirit->Dir = Internal::SetBlockability(orthognal ? RadianAngleDir8(angle) : RadianAngleDir4(angle), (spirit->Dir&8) ? 1 : 0);
+		}	
+		//Overloaded to have it set its direction based off its internal angle.
+		void SetDirAngle(lweapon spirit, bool orthognal)
+		{
+			SetDirAngle(spirit, spirit->Angle, orthognal);
+		}	
+		
+		//Gets the direction the weapon would be if it calls the above functions this frame.
+		//Non-spirit weapons can use this but the blockability needs to be maintained yourself.
+		int GetDirAngle(lweapon spirit, int angle, bool orthognal)
+		{
+			angle = WrapAngle(angle);
+			if(IsSpiritLW(spirit))
+				return Internal::SetBlockability(orthognal ? RadianAngleDir8(angle) : RadianAngleDir4(angle), (spirit->Misc[LWMISC_FLAGS]&LWF_UNBLOCKABLE) ? 1 : 0);
+			else
+				return Internal::SetBlockability(orthognal ? RadianAngleDir8(angle) : RadianAngleDir4(angle), (spirit->Dir&8) ? 1 : 0);
+		}	
+		//Overloaded to have it set its direction based off its internal angle.
+		int GetDirAngle(lweapon spirit, bool orthognal)
+		{
+			return GetDirAngle(spirit, spirit->Angle, orthognal);
+		}
+
+		//Almost identical to the Collision function from std.zh, but slight adjustments are made to make it more accurate.
+		//This function does the same thing as the Fixed Collision functions, but they are currently not included in std.zh.
+		//Checks for collision between a LWeaon hitbox and the hitbox of an NPC.
+		//start FixedCollision
+		bool FixedCollision(lweapon a, npc b)
+		{
+			int ax = a->X + a->HitXOffset;
+			int bx = b->X + b->HitXOffset;
+			int ay = a->Y + a->HitYOffset;
+			int by = b->Y + b->HitYOffset;
+			return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, bx+1, by+1, bx+b->HitWidth-1, by+b->HitHeight-1) && (a->Z + a->HitZHeight >= b->Z) && (a->Z <= b->Z + b->HitZHeight);
+		}
+
+		//Collision between the hitboxes of an LWeapon and an EWeapon
+		bool FixedCollision(lweapon a, eweapon b)
+		{
+			int ax = a->X + a->HitXOffset;
+			int bx = b->X + b->HitXOffset;
+			int ay = a->Y + a->HitYOffset;
+			int by = b->Y + b->HitYOffset;
+			return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, bx+1, by+1, bx+b->HitWidth-1, by+b->HitHeight-1) && (a->Z + a->HitZHeight >= b->Z) && (a->Z <= b->Z + b->HitZHeight);
+		}
+
+		//Collision between the hitboxes of an LWeapon and another LWeapon
+		bool FixedCollision(lweapon a, lweapon b)
+		{
+			int ax = a->X + a->HitXOffset;
+			int bx = b->X + b->HitXOffset;
+			int ay = a->Y + a->HitYOffset;
+			int by = b->Y + b->HitYOffset;
+			return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, bx+1, by+1, bx+b->HitWidth-1, by+b->HitHeight-1) && (a->Z + a->HitZHeight >= b->Z) && (a->Z <= b->Z + b->HitZHeight);
+		}
+
+		//Checks for collision between a LWeaon hitbox and the hitbox of an Item.
+		bool FixedCollision(lweapon a, item b)
+		{
+			int ax = a->X + a->HitXOffset;
+			int bx = b->X + b->HitXOffset;
+			int ay = a->Y + a->HitYOffset;
+			int by = b->Y + b->HitYOffset;
+			return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, bx+1, by+1, bx+b->HitWidth-1, by+b->HitHeight-1) && (a->Z + a->HitZHeight >= b->Z) && (a->Z <= b->Z + b->HitZHeight);
+		}
+
+		//Collision between the hitboxes of an LWeapon and a FFC
+		bool FixedCollision(lweapon a, ffc b)
+		{
+			int ax = a->X + a->HitXOffset;
+			int ay = a->Y + a->HitYOffset;
+			return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, b->X+1, b->Y+1, b->X+b->EffectWidth-1, b->Y+b->EffectHeight-1);
+		}
+
+		bool FixedCollision(lweapon a)
+		{
+			int ax = a->X + a->HitXOffset;
+			int linkx = Hero->X + Hero->HitXOffset;
+			int ay = a->Y + a->HitYOffset;
+			int linky = Hero->Y + Hero->HitYOffset;
+			return RectCollision(ax+1, ay+1, ax+a->HitWidth-1, ay+a->HitHeight-1, linkx+1, linky+1, linkx+Hero->HitWidth-1, linky+Hero->HitHeight-1) && (a->Z + a->HitZHeight >= Hero->Z) && (a->Z <= Hero->Z + Hero->HitZHeight);
+		}
+
+		//So you don't have to remember the order of the args.
+		bool FixedCollision(npc a, lweapon b)
+		{
+			return FixedCollision(b, a);
+		}
+		bool FixedCollision(eweapon a, lweapon b)
+		{
+			return FixedCollision(b, a);
+		}
+		bool FixedCollision(item a, lweapon b)
+		{
+			return FixedCollision(b, a);
+		}
+		bool FixedCollision(ffc a, lweapon b)
+		{
+			return FixedCollision(b, a);
+		}
+		//end
+		//start
+		//Gets the effective X position of a given weapon
+		//Set hit to true to check for hit offset, false for draw offset. This is subject to being removed if a function that does the same job as this is included in std.zh.
+		int EffectiveX(lweapon wpn, bool hit)
+		{
+			return wpn->X+(hit ? wpn->HitXOffset : wpn->DrawXOffset);
+		}
+		int EffectiveY(lweapon wpn, bool hit)
+		{
+			return wpn->Y+(hit ? wpn->HitYOffset : wpn->DrawYOffset);
+		}
+		//end
+	}
+}
